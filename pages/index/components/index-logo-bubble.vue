@@ -76,10 +76,10 @@ export default {
 	font-size: 20rpx;
 	line-height: 1;
 	font-weight: 700;
-	color: #7f3dff;
+	color: #e8453c;
 	background: rgba(255, 255, 255, 0.95);
-	border: 1rpx solid rgba(127, 61, 255, 0.25);
-	box-shadow: 0 10rpx 20rpx rgba(127, 61, 255, 0.15);
+	border: 1rpx solid rgba(232, 69, 60, 0.25);
+	box-shadow: 0 10rpx 20rpx rgba(232, 69, 60, 0.15);
 	transform: translate(-50%, 0) scale(0.9);
 	pointer-events: none;
 	animation-name: logoBubbleFloat;

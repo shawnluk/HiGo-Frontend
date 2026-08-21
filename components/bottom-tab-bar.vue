@@ -86,7 +86,7 @@ export default {
 	/* 外层做渐变圆角边框容器 */
 	padding: 2rpx;
 	border-radius: 80rpx;
-	background-image: linear-gradient(90deg, #8f41e9, #578aef);
+	background-image: linear-gradient(90deg, #ececec, #dedede);
 }
 
 .bottomTabbar {
@@ -117,8 +117,8 @@ export default {
 }
 
 .tabItemActive {
-	background: #ebf1ff;
-	color: #2f67ff;
+	background: #fff0ef;
+	color: #e8453c;
 }
 
 .tabIcon {

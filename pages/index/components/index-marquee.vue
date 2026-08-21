@@ -1,6 +1,6 @@
 <template>
 	<view class="marquee">
-		<view class="marqueeIcon">📢</view>
+		<image class="marqueeIcon" src="/static/note.png" mode="aspectFit" />
 		<view class="marqueeTrack">
 			<view class="marqueeInner" :style="{ animationDuration: duration + 's' }">
 				<!-- 复制一份实现无缝循环：位移 -50% 即回到起点 -->
@@ -50,12 +50,13 @@ export default {
 	margin: 12rpx 24rpx 6rpx;
 	padding: 14rpx 20rpx;
 	border-radius: 16rpx;
-	background: linear-gradient(120deg, rgba(125, 95, 255, 0.1) 0%, rgba(255, 95, 179, 0.08) 100%);
-	border: 1rpx solid rgba(125, 95, 255, 0.16);
+	background: linear-gradient(120deg, rgba(232, 69, 60, 0.08) 0%, rgba(255, 122, 89, 0.06) 100%);
+	border: 1rpx solid rgba(232, 69, 60, 0.16);
 }
 
 .marqueeIcon {
-	font-size: 30rpx;
+	width: 50rpx;
+	height: 50rpx;
 	flex-shrink: 0;
 	margin-right: 14rpx;
 }
@@ -76,7 +77,7 @@ export default {
 
 .marqueeText {
 	font-size: 24rpx;
-	color: #7a5cff;
+	color: #d0433b;
 	font-weight: 500;
 	flex-shrink: 0;
 	white-space: nowrap;

@@ -1,10 +1,14 @@
 <template>
 	<PageScaffold :tab-index="0">
-		<view class="indexContent">
-			<!-- logo吐泡泡 -->
-			<IndexLogoBubble></IndexLogoBubble>
-			<!-- 首页搜索框 -->
-			<IndexSearchBox @search="onSearch"></IndexSearchBox>
+		<view class="indexHeader">
+			<!-- 顶部：城市定位 + 通知铃铛 + 头像 -->
+			<IndexTopBar
+				@bell="onBell"
+				@avatar="onAvatar"
+				@region-change="onRegionChange"
+			></IndexTopBar>
+			<!-- 首页搜索框 + 筛选 -->
+			<IndexSearchBox @search="onSearch" @filter="onFilter"></IndexSearchBox>
 		</view>
 
 		<!-- 轮播图组件 -->
@@ -31,13 +35,13 @@
 import PageScaffold from '@/components/page-scaffold.vue'
 import HomeActivityCard from '@/components/home-activity-card.vue'
 import SwiperBar from '@/components/swiper-bar.vue'
-import IndexLogoBubble from './components/index-logo-bubble.vue'
+import IndexTopBar from './components/index-top-bar.vue'
 import IndexSearchBox from './components/index-search-box.vue'
 import HomeCategoryBar from './components/home-category-bar.vue'
 import IndexMarquee from './components/index-marquee.vue'
 
 export default {
-	components: { PageScaffold, SwiperBar, HomeActivityCard, HomeCategoryBar, IndexLogoBubble, IndexSearchBox, IndexMarquee },
+	components: { PageScaffold, SwiperBar, HomeActivityCard, HomeCategoryBar, IndexTopBar, IndexSearchBox, IndexMarquee },
 	data() {
 		return {
 			/** 下拉刷新中标记，用于显示自定义转圈 */
@@ -83,17 +87,35 @@ export default {
 			const keyword = payload && payload.keyword ? payload.keyword : ''
 			if (!keyword) return
 			uni.showToast({ title: `搜索：${keyword}`, icon: 'none' })
+		},
+		/** 点击筛选：预留筛选入口 */
+		onFilter() {
+			uni.showToast({ title: '筛选功能开发中', icon: 'none' })
+		},
+		/** 点击通知铃铛：预留消息入口 */
+		onBell() {
+			uni.showToast({ title: '消息通知开发中', icon: 'none' })
+		},
+		/** 点击头像：预留个人中心入口 */
+		onAvatar() {
+			uni.showToast({ title: '个人中心开发中', icon: 'none' })
+		},
+		/** 城市/区域切换 */
+		onRegionChange(payload) {
+			const city = payload && payload.city ? payload.city : ''
+			if (!city) return
+			uni.showToast({ title: `已切换到 ${city}`, icon: 'none' })
 		}
 	}
 }
 </script>
 
 <style>
-	.indexContent{
+	.indexHeader {
 		display: flex;
-		align-items: center;
-		padding: 0 20rpx;
-		gap: 12rpx;
+		flex-direction: column;
+		gap: 20rpx;
+		padding: 8rpx 24rpx 12rpx;
 	}
 
 	.activityList {
@@ -115,8 +137,8 @@ export default {
 	.spinner {
 		width: 32rpx;
 		height: 32rpx;
-		border: 4rpx solid #e6e1f7;
-		border-top-color: #7d5fff;
+		border: 4rpx solid #f0e3e2;
+		border-top-color: #e8453c;
 		border-radius: 50%;
 		animation: refreshing-spin 0.8s linear infinite;
 	}

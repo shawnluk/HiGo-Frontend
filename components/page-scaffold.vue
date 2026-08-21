@@ -26,7 +26,7 @@ export default {
 		},
 		showTopBar: {
 			type: Boolean,
-			default: true,
+			default: false,
 		},
 		showBottomTabBar: {
 			type: Boolean,

@@ -28,7 +28,7 @@ function normalizeCategory(item) {
 	return {
 		category_id: item.category_id || item.id,
 		category_key: item.category_key || '',
-		name: item.text || item.name || '',
+		name: item.category_name || item.text || item.name || '',
 		icon: item.icon || item.icon_url || '',
 		badge: Boolean(item.badge),
 		isActive: false,
@@ -51,11 +51,13 @@ export default {
 		async loadCategories() {
 			try {
 				const list = await fetchCategories()
+				// console.log(list);
+				
 				if (Array.isArray(list) && list.length) {
 					const mapped = list.map(normalizeCategory).filter(Boolean)
 					if (mapped.length) {
 						this.items = mapped
-						console.log('[HiGo] 分类列表 items =>', this.items);					
+						// console.log('[HiGo] 分类列表 items =>', this.items);					
 					}
 				}
 			} catch (e) {
@@ -85,7 +87,7 @@ export default {
 <style scoped>
 .hcWrap {
 	padding: 12rpx 24rpx 18rpx;
-	background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, rgba(248, 243, 255, 0.45) 100%);
+	background: transparent;
 }
 
 .hcScroll {
@@ -105,50 +107,50 @@ export default {
 	align-items: center;
 	width: 124rpx;
 	flex-shrink: 0;
-	padding: 10rpx 6rpx 12rpx;
+	padding: 8rpx 6rpx 8rpx;
 	border-radius: 24rpx;
-	background: rgba(255, 255, 255, 0.72);
-	border: 2rpx solid rgba(255, 255, 255, 0.9);
-	box-shadow: 0 10rpx 28rpx rgba(105, 62, 255, 0.08);
+	background: #ffffff;
+	border: 2rpx solid rgba(0, 0, 0, 0.04);
+	box-shadow: 0 6rpx 16rpx rgba(0, 0, 0, 0.04);
 	transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .hcItemActive {
-	background: linear-gradient(145deg, #ffffff 0%, rgba(125, 95, 255, 0.14) 48%, rgba(255, 95, 179, 0.1) 100%);
-	border-color: rgba(125, 95, 255, 0.35);
-	box-shadow: 0 14rpx 32rpx rgba(125, 95, 255, 0.22);
+	background: #fff5f4;
+	border-color: rgba(232, 69, 60, 0.5);
+	box-shadow: 0 8rpx 22rpx rgba(232, 69, 60, 0.16);
 }
 
 .hcIconBox {
 	position: relative;
 	width: 100rpx;
-	height: 76rpx;
+	height: 64rpx;
 	border-radius: 22rpx;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	background: linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(245, 242, 255, 0.9) 100%);
-	border: 1rpx solid rgba(125, 95, 255, 0.18);
-	box-shadow: 0 8rpx 20rpx rgba(125, 95, 255, 0.12);
+	background: #f5f5f7;
+	border: 1rpx solid rgba(0, 0, 0, 0.06);
+	box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.05);
 }
 
 .hcItemActive .hcIconBox {
-	background: linear-gradient(180deg, rgba(255, 255, 255, 1) 0%, rgba(232, 224, 255, 0.95) 100%);
-	border-color: rgba(125, 95, 255, 0.32);
-	box-shadow: 0 10rpx 22rpx rgba(125, 95, 255, 0.2);
+	background: #ffffff;
+	border-color: rgba(232, 69, 60, 0.35);
+	box-shadow: 0 6rpx 16rpx rgba(232, 69, 60, 0.14);
 }
 
 .hcIcon {
-	width: 56rpx;
-	height: 56rpx;
+	width: 48rpx;
+	height: 48rpx;
 }
 
 .hcText {
-	margin-top: 10rpx;
+	margin-top: 6rpx;
 	font-size: 24rpx;
 	line-height: 1.2;
 	font-weight: 500;
-	color: #6c6392;
+	color: #1f1f1f;
 	text-align: center;
 	max-width: 112rpx;
 	overflow: hidden;
@@ -158,7 +160,7 @@ export default {
 
 .hcItemActive .hcText {
 	font-weight: 600;
-	color: #5d37ff;
+	color: #e8453c;
 }
 
 .hcBadge {

@@ -1,37 +1,26 @@
 <template>
 	<view class="searchBox">
-		<picker :value="innerRegion" @change="handleRegionChange">
-			<view class="cityBox">
-				<text class="cityText">{{ innerCity }}</text>
-				<text class="cityArrow">▾</text>
-			</view>
-		</picker>
+		<!-- <image class="searchIcon" src="/static/search.png" mode="aspectFit" /> -->
 		<input
 			:value="innerKeyword"
 			class="searchInput"
-			placeholder="搜索活动/小队"
+			placeholder="搜索活动、地点或感兴趣的主题"
 			placeholder-class="searchPlaceholder"
 			confirm-type="search"
 			@input="handleSearchInput"
 			@confirm="handleSearchConfirm"
 		/>
+		<view class="filterEntry" @click="handleFilter">
+			<text class="filterIcon">▾</text>
+			<text class="filterText">筛选</text>
+		</view>
 	</view>
 </template>
 
 <script>
-import { MOCK_INDEX_INITIAL_CITY, MOCK_INDEX_INITIAL_REGION } from '@/mock/index-page.js'
-
 export default {
 	name: 'IndexSearchBox',
 	props: {
-		initialCity: {
-			type: String,
-			default: MOCK_INDEX_INITIAL_CITY,
-		},
-		initialRegion: {
-			type: Array,
-			default: () => [...MOCK_INDEX_INITIAL_REGION],
-		},
 		initialKeyword: {
 			type: String,
 			default: '',
@@ -39,19 +28,10 @@ export default {
 	},
 	data() {
 		return {
-			innerCity: this.initialCity,
-			innerRegion: this.initialRegion,
 			innerKeyword: this.initialKeyword,
 		}
 	},
 	methods: {
-		/** 地区选择：更新城市与地区 */
-		handleRegionChange(e) {
-			const value = (e && e.detail && e.detail.value) || []
-			const nextCity = value.length >= 2 ? value[1].replace(/市$/, '') : this.innerCity
-			this.innerRegion = value
-			this.innerCity = nextCity
-		},
 		/** 搜索关键字输入：同步内部值 */
 		handleSearchInput(e) {
 			const value = (e && e.detail && e.detail.value) || ''
@@ -62,50 +42,32 @@ export default {
 			const keyword = (this.innerKeyword || '').trim()
 			if (!keyword) return
 			this.innerKeyword = keyword
-			this.$emit('search', {
-				keyword,
-				region: this.innerRegion,
-				city: this.innerCity,
-			})
+			this.$emit('search', { keyword })
+		},
+		/** 点击筛选 */
+		handleFilter() {
+			this.$emit('filter')
 		},
 	},
 }
 </script>
 
 <style scoped>
-.cityBox {
-	flex: 0 0 auto;
-	display: flex;
-	align-items: center;
-	height: 50rpx;
-	padding: 0 22rpx;
-	border-radius: 999rpx;
-	background: rgba(255, 255, 255, 0.75);
-	backdrop-filter: blur(12rpx);
-}
-
-.cityText {
-	font-size: 30rpx;
-	font-weight: 700;
-	color: #111;
-}
-
-.cityArrow {
-	margin-left: 10rpx;
-	font-size: 26rpx;
-	color: #777;
-	margin-top: 2rpx;
-}
-
 .searchBox {
-	flex: 1;
 	display: flex;
 	align-items: center;
 	height: 80rpx;
 	padding: 0 22rpx;
 	border-radius: 999rpx;
-	background: rgba(255, 255, 255, 0.92);
-	border: 1rpx solid burlywood;
+	background: #f5f5f5;
+	border: 1rpx solid rgba(0, 0, 0, 0.04);
+}
+
+.searchIcon {
+	width: 32rpx;
+	height: 32rpx;
+	margin-right: 14rpx;
+	flex-shrink: 0;
 }
 
 .searchInput {
@@ -113,10 +75,30 @@ export default {
 	height: 76rpx;
 	line-height: 76rpx;
 	font-size: 28rpx;
-	color: #111;
+	color: #111111;
 }
 
 .searchPlaceholder {
-	color: #bbb;
+	color: #999999;
+}
+
+.filterEntry {
+	display: flex;
+	align-items: center;
+	flex-shrink: 0;
+	padding-left: 16rpx;
+	border-left: 1rpx solid rgba(0, 0, 0, 0.08);
+}
+
+.filterIcon {
+	margin-right: 6rpx;
+	font-size: 26rpx;
+	color: #e8453c;
+}
+
+.filterText {
+	font-size: 26rpx;
+	font-weight: 600;
+	color: #e8453c;
 }
 </style>

@@ -17,4 +17,14 @@
 
 <style>
 	/*每个页面公共css */
+	/* 全局字体：所有文字、数字、字母统一使用微软雅黑 */
+	page,
+	button,
+	input,
+	textarea,
+	scroll-view,
+	picker,
+	label {
+		font-family: 'Microsoft YaHei', '微软雅黑', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Helvetica Neue', Arial, sans-serif;
+	}
 </style>
