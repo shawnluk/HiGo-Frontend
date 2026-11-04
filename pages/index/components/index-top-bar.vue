@@ -1,8 +1,11 @@
 <template>
 	<view class="topBar">
 		<!-- 城市/区域定位 -->
+		<!-- #ifndef H5 -->
 		<picker mode="region" :value="innerRegion" @change="handleRegionChange">
-			<view class="locationBox">
+		<!-- #endif -->
+			<!-- H5 端 uni-picker 不支持 region 模式，仅保留展示 -->
+			<view class="locationBox" @click="handleLocationTap">
 				<view class="locTextWrap">
 					<view class="locLabelRow">
 						<image class="locIcon" src="/static/address.png" mode="aspectFit" />
@@ -14,7 +17,9 @@
 					</view>
 				</view>
 			</view>
+		<!-- #ifndef H5 -->
 		</picker>
+		<!-- #endif -->
 
 		<!-- 右侧：通知铃铛 + 头像 -->
 		<view class="actions">
@@ -75,6 +80,12 @@ export default {
 			this.innerCity = nextCity
 			this.$emit('region-change', { city: this.innerCity, region: this.innerRegion })
 		},
+		/** H5 端没有 region 选择器，点击定位区域仅提示（小程序/App 由 picker 接管） */
+		handleLocationTap() {
+			// #ifdef H5
+			uni.showToast({ title: 'H5 端暂不支持城市选择', icon: 'none' })
+			// #endif
+		},
 		/** 点击通知铃铛 */
 		handleBell() {
 			this.$emit('bell')
@@ -92,7 +103,10 @@ export default {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding: 0 8rpx;
+	/* 全局 navigationStyle 为 custom，需主动避让系统状态栏（时间 / 电量） */
+	padding-top: var(--status-bar-height, 50rpx);
+	padding-right: 8rpx;
+	padding-left: 8rpx;
 }
 
 .locationBox {

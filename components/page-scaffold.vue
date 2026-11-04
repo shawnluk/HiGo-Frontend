@@ -1,7 +1,10 @@
 <template>
 	<view class="pageScaffold">
 		<TopBar v-if="showTopBar" />
-		<slot />
+		<!-- 内容区保留至少一屏高度，保证底栏在内容不足一屏时也贴在最底部 -->
+		<view class="pageBody">
+			<slot />
+		</view>
 		<BottomTabBar v-show="showBottomTabBar" :current="tabIndex" />
 	</view>
 </template>
@@ -38,6 +41,11 @@ export default {
 
 <style scoped>
 .pageScaffold {
-	min-height: 100%;
+	min-height: 100vh;
+}
+
+.pageBody {
+	/* 预留底栏自身高度（120rpx 胶囊 + 10rpx 间隙），内容较短时底栏仍在屏幕底部 */
+	min-height: calc(100vh - 50rpx);
 }
 </style>

@@ -64,6 +64,6 @@
 .momentPage {
 	min-height: 100vh;
 	background: linear-gradient(180deg, #f4f5f7 0%, #f0f2ff 50%, #f4f5f7 100%);
-	padding-bottom: calc(140rpx + env(safe-area-inset-bottom));
+	/* 底栏已占据文档流空间，无需再额外预留 padding-bottom */
 }
 </style>
