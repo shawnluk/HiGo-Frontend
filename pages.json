@@ -53,8 +53,7 @@
 			"path": "src/create-unit/create-unit",
 			"style": {
 				"navigationBarTitleText": "创建小队",
-				"navigationStyle": "default",
-				"navigationBarBackgroundColor": "#E8F4FF",
+				"navigationStyle": "custom",
 				"navigationBarTextStyle": "black"
 			}
 		},

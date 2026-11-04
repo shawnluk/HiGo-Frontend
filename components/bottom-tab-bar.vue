@@ -26,6 +26,44 @@
 				<text v-if="!item.isPublish" class="tabText">{{ item.text }}</text>
 			</view>
 		</view>
+
+		<!-- 发布选择弹层：冒泡动画结束后展示 -->
+		<view v-if="showPublishSheet" class="publishMask" @click="closePublishSheet"></view>
+		<view v-if="showPublishSheet" class="publishSheet" @click.stop>
+			<view class="sheetGrabBar"></view>
+			<view class="sheetHeader">
+				<text class="sheetTitle">发布</text>
+				<view class="sheetClose" @click="closePublishSheet">
+					<uni-icons type="closeempty" size="18" color="#999999"></uni-icons>
+				</view>
+			</view>
+			<view class="sheetOptions">
+				<view class="optionCard" @click="goPublish('activity')">
+					<view class="optionIcon optionIconActivity">
+						<uni-icons type="notification-filled" size="26" color="#ff3b30"></uni-icons>
+					</view>
+					<text class="optionTitle">发布活动</text>
+					<text class="optionSub">创建线下活动</text>
+				</view>
+				<view class="optionCard" @click="goPublish('moment')">
+					<view class="optionIcon optionIconMoment">
+						<uni-icons type="camera-filled" size="26" color="#7d5fff"></uni-icons>
+					</view>
+					<text class="optionTitle">发布动态</text>
+					<text class="optionSub">图文记录出行</text>
+				</view>
+				<view class="optionCard" @click="goPublish('unit')">
+					<view class="optionIcon optionIconUnit">
+						<uni-icons type="staff-filled" size="26" color="#3cc36b"></uni-icons>
+					</view>
+					<text class="optionTitle">创建小队</text>
+					<text class="optionSub">成为小队主理人</text>
+				</view>
+			</view>
+			<view class="cancelBtn" @click="closePublishSheet">
+				<text class="cancelTxt">取消</text>
+			</view>
+		</view>
 	</view>
 </template>
 
@@ -43,6 +81,8 @@ export default {
 		return {
 			// 发布按钮的冒泡动画状态
 			isBubbling: false,
+			// 冒泡结束后展示的发布选择弹层
+			showPublishSheet: false,
 			isNavigating: false,
 			bubbleTimer: null,
 			// 直接复用 pages.json 中的图标配置
@@ -93,13 +133,13 @@ export default {
 			});
 		},
 
-		/** 发布活动：先校验登录态，播放冒泡动画后进入创建活动页 */
+		/** 发布活动：先校验登录态，播放冒泡动画后弹出发布选择面板 */
 		onPublish() {
 			const token = uni.getStorageSync('token');
 			if (!token) {
 				uni.showModal({
 					title: '提示',
-					content: '请先登录后再发布活动',
+					content: '请先登录后再发布内容',
 					confirmText: '去登录',
 					cancelText: '取消',
 					success: (res) => {
@@ -122,17 +162,36 @@ export default {
 				this.isBubbling = true;
 			});
 
-			// 与冒泡动画时长一致，动画结束后再跳转
+			// 等待气泡动画全部播放完毕（CSS 时长 1.1s + 最后一个气泡延迟 0.4s = 1.5s）
 			this.bubbleTimer = setTimeout(() => {
-				uni.redirectTo({
-					url: '/src/create-activity/create-activity',
-					fail: () => {
-						this.isNavigating = false;
-						this.isBubbling = false;
-						uni.showToast({ title: '页面打开失败', icon: 'none' });
-					}
-				});
-			}, 3000);
+				this.isBubbling = false;
+				this.showPublishSheet = true;
+				this.isNavigating = false;
+				this.bubbleTimer = null;
+			}, 1500);
+		},
+
+		/** 关闭发布选择面板 */
+		closePublishSheet() {
+			this.showPublishSheet = false;
+		},
+
+		/** 选择发布类型后跳转对应创建页面 */
+		goPublish(type) {
+			const routes = {
+				activity: '/src/create-activity/create-activity',
+				moment: '/src/create-moment/create-moment',
+				unit: '/src/create-unit/create-unit'
+			};
+			const url = routes[type];
+			if (!url) return;
+			this.closePublishSheet();
+			uni.navigateTo({
+				url,
+				fail: () => {
+					uni.showToast({ title: '页面打开失败', icon: 'none' });
+				}
+			});
 		}
 	},
 
@@ -277,7 +336,7 @@ export default {
 
 .tabPublishBtn.isBubbling .bubbleItem {
 	animation-name: bubbleRise;
-	animation-duration: 3s;
+	animation-duration: 1.1s;
 	animation-timing-function: cubic-bezier(0.2, 0.55, 0.2, 1);
 	animation-fill-mode: forwards;
 }
@@ -295,7 +354,7 @@ export default {
 	--s: 0.95;
 	min-width: 40rpx;
 	height: 26rpx;
-	animation-delay: 0.15s;
+	animation-delay: 0.06s;
 }
 
 .tabPublishBtn.isBubbling .bubbleItem:nth-child(3) {
@@ -304,7 +363,7 @@ export default {
 	--s: 1.2;
 	min-width: 52rpx;
 	height: 30rpx;
-	animation-delay: 0.32s;
+	animation-delay: 0.12s;
 }
 
 .tabPublishBtn.isBubbling .bubbleItem:nth-child(4) {
@@ -313,7 +372,7 @@ export default {
 	--s: 0.9;
 	min-width: 38rpx;
 	height: 24rpx;
-	animation-delay: 0.55s;
+	animation-delay: 0.2s;
 }
 
 .tabPublishBtn.isBubbling .bubbleItem:nth-child(5) {
@@ -322,7 +381,7 @@ export default {
 	--s: 1;
 	min-width: 46rpx;
 	height: 28rpx;
-	animation-delay: 0.8s;
+	animation-delay: 0.28s;
 }
 
 .tabPublishBtn.isBubbling .bubbleItem:nth-child(6) {
@@ -331,7 +390,7 @@ export default {
 	--s: 0.78;
 	min-width: 34rpx;
 	height: 22rpx;
-	animation-delay: 1.05s;
+	animation-delay: 0.4s;
 }
 
 @keyframes bubbleRise {
@@ -368,6 +427,168 @@ export default {
 	font-weight: 600;
 	letter-spacing: 2rpx;
 	text-shadow: 0 2rpx 8rpx rgba(150, 20, 15, 0.2);
+}
+
+/* ===== 发布选择弹层 ===== */
+.publishMask {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	z-index: 1100;
+	background: rgba(0, 0, 0, 0.35);
+	pointer-events: auto;
+	animation: maskFade 0.2s ease-out;
+}
+
+.publishSheet {
+	position: fixed;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	z-index: 1200;
+	box-sizing: border-box;
+	background: #ffffff;
+	border-radius: 28rpx 28rpx 0 0;
+	padding: 12rpx 24rpx 24rpx;
+	padding-bottom: calc(24rpx + constant(safe-area-inset-bottom));
+	padding-bottom: calc(24rpx + env(safe-area-inset-bottom, 0px));
+	pointer-events: auto;
+	animation: sheetUp 0.26s ease-out;
+}
+
+.sheetGrabBar {
+	width: 72rpx;
+	height: 8rpx;
+	border-radius: 999rpx;
+	background: rgba(0, 0, 0, 0.12);
+	margin: 8rpx auto 20rpx;
+}
+
+.sheetHeader {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 0 4rpx;
+	margin-bottom: 24rpx;
+}
+
+.sheetTitle {
+	font-size: 34rpx;
+	font-weight: 700;
+	color: #1f1f1f;
+}
+
+.sheetClose {
+	width: 56rpx;
+	height: 56rpx;
+	border-radius: 50%;
+	background: #f2f2f3;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.sheetClose:active {
+	opacity: 0.8;
+}
+
+.sheetOptions {
+	display: flex;
+	align-items: stretch;
+	gap: 16rpx;
+}
+
+.optionCard {
+	flex: 1;
+	box-sizing: border-box;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	padding: 26rpx 8rpx 22rpx;
+	border-radius: 20rpx;
+	border: 1rpx solid #ececec;
+	background: #ffffff;
+}
+
+.optionCard:active {
+	opacity: 0.85;
+}
+
+.optionIcon {
+	width: 88rpx;
+	height: 88rpx;
+	border-radius: 22rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin-bottom: 16rpx;
+}
+
+.optionIconActivity {
+	background: #ffe9e6;
+}
+
+.optionIconMoment {
+	background: #efeafd;
+}
+
+.optionIconUnit {
+	background: #e7f8ec;
+}
+
+.optionTitle {
+	font-size: 28rpx;
+	font-weight: 600;
+	color: #1f1f1f;
+	line-height: 1.3;
+}
+
+.optionSub {
+	margin-top: 6rpx;
+	font-size: 22rpx;
+	color: #a8a8a8;
+	line-height: 1.3;
+	text-align: center;
+}
+
+.cancelBtn {
+	margin-top: 24rpx;
+	height: 92rpx;
+	border-radius: 20rpx;
+	background: #f5f5f6;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.cancelBtn:active {
+	opacity: 0.85;
+}
+
+.cancelTxt {
+	font-size: 30rpx;
+	font-weight: 500;
+	color: #333333;
+}
+
+@keyframes sheetUp {
+	from {
+		transform: translateY(100%);
+	}
+	to {
+		transform: translateY(0);
+	}
+}
+
+@keyframes maskFade {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
 }
 </style>
 

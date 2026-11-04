@@ -1,65 +1,145 @@
 <template>
-	<view class="page">
-		<text class="lead">创建小队，与搭子一起玩。上传头像、填写名称后即可提交（接口待接入）。</text>
+	<view class="pageRoot">
+		<!-- 自定义顶栏 -->
+		<view class="navBar">
+			<view class="backBtn" @click="onBack">
+				<uni-icons type="left" size="22" color="#1f1f1f"></uni-icons>
+			</view>
+			<text class="navTitle">创建小队，与搭子一起玩</text>
+		</view>
 
-		<view class="field">
-			<text class="label">小队头像</text>
-			<view
-				class="avatarPicker"
-				:class="{ hasAvatar: !!avatarTempPath }"
-				hover-class="avatarPicker--hover"
-				hover-stay-time="120"
-				@tap="selectAvatar"
-			>
-				<image v-if="avatarTempPath" class="avatarImg" :src="avatarTempPath" mode="aspectFill" />
-				<view v-else class="avatarPlaceholder">
-					<text class="avatarPlus">＋</text>
-					<text class="avatarHint">点击上传</text>
+		<scroll-view scroll-y class="formScroll" :show-scrollbar="false">
+			<!-- 小队头像 -->
+			<view class="card avatarCard">
+				<view
+					class="avatarBox"
+					:class="{ hasAvatar: !!avatarTempPath }"
+					hover-class="avatarBox--hover"
+					hover-stay-time="120"
+					@tap="selectAvatar"
+				>
+					<image
+						v-if="avatarTempPath"
+						class="avatarImg"
+						:src="avatarTempPath"
+						mode="aspectFill"
+					/>
+					<uni-icons v-else type="staff-filled" size="56" color="#ffffff"></uni-icons>
+					<view class="cameraBadge">
+						<uni-icons type="camera-filled" size="14" color="#ffffff"></uni-icons>
+					</view>
+				</view>
+				<text class="avatarLabel">{{ avatarTempPath ? '点击更换头像（待接入）' : '上传小队头像（待接入）' }}</text>
+			</view>
+
+			<!-- 小队名称 -->
+			<view class="card rowCard">
+				<view class="rowLine">
+					<text class="rowLabel">小队名称</text>
+					<input
+						:key="nameInputKey"
+						class="rowInput"
+						type="text"
+						:value="unitName"
+						placeholder="给小队起个响亮的名字"
+						placeholder-class="fieldPh"
+						:adjust-position="true"
+						:cursor-spacing="24"
+						@input="onUnitNameInput"
+						@compositionend="onUnitNameInput"
+					/>
+				</view>
+				<view class="nameFoot">
+					<text class="nameHint">仅支持中文、字母、数字、空格，最多 8 个汉字或 16 个英文字符</text>
+					<text v-if="nameWidthUsed > 0" class="nameCount">{{ nameWidthUsed }} / {{ nameWidthMax }}</text>
 				</view>
 			</view>
-			<text v-if="avatarTempPath" class="avatarTip" @tap.stop="selectAvatar">点击可更换头像</text>
-		</view>
 
-		<view class="field">
-			<text class="label">小队名称</text>
-			<input
-				:key="nameInputKey"
-				class="input"
-				type="text"
-				:value="unitName"
-				placeholder="例如周末徒步小队"
-				placeholder-class="ph"
-				:adjust-position="true"
-				:cursor-spacing="24"
-				@input="onUnitNameInput"
-				@compositionend="onUnitNameInput"
-			/>
-			<text class="hint">仅中文、字母、数字、空格；最多 8 个汉字或 16 个英文字符（混合按字数折算）</text>
-			<text class="counter">已用 {{ nameWidthUsed }} / {{ nameWidthMax }}</text>
-		</view>
+			<!-- 小队简介 -->
+			<view class="card introCard">
+				<text class="cardTitle">小队简介</text>
+				<textarea
+					class="introInput"
+					:value="unitIntro"
+					placeholder="介绍一下你的小队风格、适合谁来玩，以及你会带来怎样的活动～"
+					placeholder-class="fieldPh"
+					:auto-height="true"
+					:maxlength="unitIntroMaxLen"
+					:cursor-spacing="24"
+					@input="onUnitIntroInput"
+				/>
+				<view class="introFoot">
+					<text class="introLimit">最多 {{ unitIntroMaxLen }} 个字符</text>
+					<text v-if="unitIntro.length > 0" class="introCount">{{ unitIntro.length }} / {{ unitIntroMaxLen }}</text>
+				</view>
+			</view>
 
-		<view class="field">
-			<text class="label">简介（可选）</text>
-			<textarea
-				class="textarea"
-				:value="unitIntro"
-				placeholder="一句话说明小队做什么"
-				placeholder-class="ph"
-				:auto-height="true"
-				:maxlength="unitIntroMaxLen"
-				:cursor-spacing="24"
-				@input="onUnitIntroInput"
-			/>
-			<text class="hint">最多 {{ unitIntroMaxLen }} 个字符</text>
-		</view>
+			<!-- 小队分类 -->
+			<view class="card catCard">
+				<text class="cardTitle">小队分类</text>
+				<view class="catGrid">
+					<view
+						v-for="item in categoryOptions"
+						:key="item.category_id"
+						class="catItem"
+						:class="{ catItemActive: item.category_id === squadCategoryId }"
+						@tap="onSelectCategory(item)"
+					>
+						<view class="catIconBox">
+							<image v-if="item.icon" class="catIcon" :src="item.icon" mode="aspectFit" />
+							<text v-else class="catFallback">{{ item.name.charAt(0) }}</text>
+						</view>
+						<text class="catName">{{ item.name }}</text>
+					</view>
 
-		<view class="primary" hover-class="primary--hover" @tap="onSubmitPlaceholder">
-			<text class="primaryTxt">提交（待接入接口）</text>
+					<view class="catItem" @tap="onMoreCategory">
+						<view class="catIconBox">
+							<text class="catMorePlus">＋</text>
+						</view>
+						<text class="catName catMoreName">更多</text>
+					</view>
+				</view>
+			</view>
+
+			<!-- 所在城市 / 入队审核 -->
+			<view class="card rowCard">
+				<!-- #ifndef H5 -->
+				<picker mode="region" :value="region" @change="onRegionChange">
+				<!-- #endif -->
+					<view class="rowLine" @tap="onCityTap">
+						<text class="rowLabel">所在城市</text>
+						<text class="rowValue">{{ displayCity }}</text>
+						<text class="chevron">›</text>
+					</view>
+				<!-- #ifndef H5 -->
+				</picker>
+				<!-- #endif -->
+
+				<view class="rowDivider"></view>
+
+				<view class="rowLine">
+					<text class="rowLabel">入队审核</text>
+					<text class="rowHint">需主理人审核</text>
+					<view class="switchWrap">
+						<switch :checked="needReview" color="#ff3b30" @change="onReviewChange" />
+					</view>
+				</view>
+			</view>
+
+			<view class="scrollBottomPad"></view>
+		</scroll-view>
+
+		<view class="footer safeFooter">
+			<view class="primary" hover-class="primary--hover" @tap="onSubmitPlaceholder">
+				<text class="primaryTxt">创建小队（待接入）</text>
+			</view>
 		</view>
 	</view>
 </template>
 
 <script>
+import { fetchCategories } from '@/api/modules/category.js'
+import { MOCK_INDEX_INITIAL_CITY, MOCK_INDEX_INITIAL_REGION } from '@/mock/index-page.js'
 import {
 	clampSquadName,
 	squadNameDisplayWidth,
@@ -70,6 +150,19 @@ import {
 const SQUAD_NAME_TOAST_GAP_MS = 600
 /** 小队简介最大字符数（含换行等，与 textarea maxlength 一致） */
 const UNIT_INTRO_MAX_LEN = 100
+
+/** 将接口分类项统一为页面展示结构 */
+function normalizeCategory(item) {
+	if (!item || typeof item !== 'object') return null
+	const category_id = item.category_id != null ? item.category_id : item.id
+	const name = item.category_name || item.text || item.name || ''
+	if (category_id == null || !name) return null
+	return {
+		category_id,
+		name,
+		icon: item.icon || item.icon_url || '',
+	}
+}
 
 export default {
 	data() {
@@ -83,10 +176,83 @@ export default {
 			nameWidthMax: SQUAD_NAME_MAX_WIDTH,
 			/** 受控 input 缩短时部分端原生不刷新，变更 key 强制重建以显示截断结果 */
 			nameInputKey: 0,
+			/** 分类选项与当前选中分类 */
+			categoryOptions: [],
+			squadCategoryId: null,
+			squadCategoryName: '',
+			/** 所在城市（省/市/区） */
+			city: MOCK_INDEX_INITIAL_CITY,
+			region: [...MOCK_INDEX_INITIAL_REGION],
+			/** 是否需要队长审核入队申请 */
+			needReview: true,
 			_lastSquadWidthToastAt: 0,
 		}
 	},
+	computed: {
+		/** 展示「城市 · 区县」 */
+		displayCity() {
+			const district = Array.isArray(this.region) ? this.region[2] : ''
+			return district && this.city ? `${this.city} · ${district}` : this.city
+		},
+	},
+	async created() {
+		await this.loadCategories()
+	},
 	methods: {
+		/** 返回上一页，无页面栈时回到首页 */
+		onBack() {
+			const pages = getCurrentPages()
+			if (pages.length > 1) {
+				uni.navigateBack()
+			} else {
+				uni.reLaunch({ url: '/pages/user/user' })
+			}
+		},
+		/** 拉取小队分类选项 */
+		async loadCategories() {
+			try {
+				const list = await fetchCategories()
+				if (Array.isArray(list) && list.length) {
+					this.categoryOptions = list.map(normalizeCategory).filter(Boolean)
+				}
+			} catch (e) {
+				uni.showToast({
+					title: (e && e.message) || '分类加载失败',
+					icon: 'none',
+				})
+			}
+		},
+		/** 选择分类：再次点击可取消选中 */
+		onSelectCategory(item) {
+			if (this.squadCategoryId === item.category_id) {
+				this.squadCategoryId = null
+				this.squadCategoryName = ''
+				return
+			}
+			this.squadCategoryId = item.category_id
+			this.squadCategoryName = item.name
+		},
+		/** 更多分类占位 */
+		onMoreCategory() {
+			uni.showToast({ title: '更多分类开发中', icon: 'none' })
+		},
+		/** 地区选择：更新城市与地区 */
+		onRegionChange(e) {
+			const value = (e && e.detail && e.detail.value) || []
+			if (!Array.isArray(value) || value.length < 2) return
+			this.region = value
+			this.city = value[1] ? String(value[1]).replace(/市$/, '') : this.city
+		},
+		/** H5 端没有 region 选择器，点击仅提示（小程序/App 由 picker 接管） */
+		onCityTap() {
+			// #ifdef H5
+			uni.showToast({ title: 'H5 端暂不支持城市选择', icon: 'none' })
+			// #endif
+		},
+		/** 切换入队审核 */
+		onReviewChange(e) {
+			this.needReview = Boolean(e && e.detail && e.detail.value)
+		},
 		/**
 		 * uni-app：小程序常见 e.detail.value；H5 常见 e.target.value；
 		 * 少数封装会挂在 mpEvent / nativeEvent。
@@ -142,8 +308,7 @@ export default {
 			const next = clampSquadName(raw)
 			this.unitName = next
 			this.syncNameWidthUsed()
-			const needRemount =
-				raw !== onlyValid || next !== onlyValid
+			const needRemount = raw !== onlyValid || next !== onlyValid
 			if (needRemount) {
 				this.nameInputKey += 1
 			}
@@ -204,147 +369,375 @@ export default {
 }
 </script>
 
-<style>
-.page {
-	min-height: 100vh;
-	box-sizing: border-box;
-	padding: 32rpx 28rpx 48rpx;
-	background: linear-gradient(180deg, #f0f4ff 0%, #f7f5ff 45%, #ffffff 100%);
+<style scoped>
+.pageRoot {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	display: flex;
+	flex-direction: column;
+	background: #f5f5f6;
 }
 
-.lead {
-	display: block;
-	font-size: 26rpx;
-	color: #6c6392;
-	line-height: 1.55;
-	margin-bottom: 36rpx;
+/* 顶栏 */
+.navBar {
+	position: relative;
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	gap: 4rpx;
+	padding-top: var(--status-bar-height, 50rpx);
+	height: 88rpx;
+	box-sizing: content-box;
+	padding-left: 20rpx;
+	padding-right: 24rpx;
+	background: #f5f5f6;
 }
 
-.field {
-	margin-bottom: 28rpx;
-}
-
-.label {
-	display: block;
-	font-size: 26rpx;
-	color: #3b3558;
-	margin-bottom: 12rpx;
-	font-weight: 600;
-}
-
-.avatarPicker {
-	width: 200rpx;
-	height: 200rpx;
+.backBtn {
+	width: 64rpx;
+	height: 64rpx;
 	border-radius: 50%;
-	background: #ffffff;
-	border: 2rpx dashed rgba(125, 95, 255, 0.35);
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	overflow: hidden;
+	flex-shrink: 0;
+}
+
+.backBtn:active {
+	opacity: 0.7;
+}
+
+.navTitle {
+	font-size: 36rpx;
+	font-weight: 700;
+	color: #1f1f1f;
+	letter-spacing: 0.5rpx;
+}
+
+/* 表单滚动区 */
+.formScroll {
+	flex: 1;
+	height: 0;
+	min-height: 0;
+	padding: 8rpx 24rpx 0;
 	box-sizing: border-box;
 }
 
-.avatarPicker.hasAvatar {
-	border-style: solid;
-	border-color: rgba(125, 95, 255, 0.22);
-	box-shadow: 0 12rpx 28rpx rgba(93, 55, 255, 0.15);
+.card {
+	background: #ffffff;
+	border-radius: 24rpx;
+	margin-bottom: 20rpx;
+	box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
+	border: 1rpx solid rgba(0, 0, 0, 0.03);
 }
 
-.avatarPicker--hover {
-	opacity: 0.88;
+.cardTitle {
+	display: block;
+	font-size: 30rpx;
+	font-weight: 600;
+	color: #1f1f1f;
 }
 
-.avatarImg {
-	width: 100%;
-	height: 100%;
-}
-
-.avatarPlaceholder {
+/* 头像 */
+.avatarCard {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	justify-content: center;
-	gap: 8rpx;
-	padding: 16rpx;
+	padding: 44rpx 0 30rpx;
 }
 
-.avatarPlus {
-	font-size: 56rpx;
+.avatarBox {
+	position: relative;
+	width: 176rpx;
+	height: 176rpx;
+	border-radius: 36rpx;
+	background: linear-gradient(135deg, #ffa271 0%, #f2607a 48%, #9b5ce0 100%);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	box-sizing: border-box;
+}
+
+.avatarBox--hover {
+	opacity: 0.9;
+}
+
+.avatarBox.hasAvatar {
+	box-shadow: 0 10rpx 24rpx rgba(0, 0, 0, 0.1);
+}
+
+.avatarImg {
+	position: absolute;
+	left: 0;
+	top: 0;
+	width: 100%;
+	height: 100%;
+	border-radius: 36rpx;
+}
+
+.cameraBadge {
+	position: absolute;
+	right: -10rpx;
+	bottom: -10rpx;
+	width: 48rpx;
+	height: 48rpx;
+	border-radius: 50%;
+	background: #ff3b30;
+	border: 4rpx solid #ffffff;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	box-shadow: 0 6rpx 14rpx rgba(255, 59, 48, 0.28);
+}
+
+.avatarLabel {
+	margin-top: 20rpx;
+	font-size: 24rpx;
+	color: #8a8a8a;
+}
+
+/* 名称 / 城市 / 审核 行 */
+.rowCard {
+	padding: 0 28rpx;
+}
+
+.rowLine {
+	display: flex;
+	align-items: center;
+	gap: 16rpx;
+	min-height: 108rpx;
+}
+
+.rowLabel {
+	font-size: 30rpx;
+	font-weight: 600;
+	color: #1f1f1f;
+	flex-shrink: 0;
+}
+
+.rowInput {
+	flex: 1;
+	width: auto;
+	min-width: 0;
+	height: 88rpx;
+	font-size: 28rpx;
+	color: #1f1f1f;
+	text-align: right;
+	background: transparent;
+}
+
+.fieldPh {
+	color: #b3b3b3;
+	font-size: 26rpx;
+}
+
+.rowValue {
+	flex: 1;
+	min-width: 0;
+	font-size: 28rpx;
+	color: #1f1f1f;
+	text-align: right;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+.rowHint {
+	font-size: 26rpx;
+	color: #b3b3b3;
+	text-align: right;
+	flex: 1;
+	min-width: 0;
+}
+
+.chevron {
+	font-size: 34rpx;
+	color: #c8c8c8;
+	font-weight: 300;
 	line-height: 1;
-	color: #7d5fff;
+	flex-shrink: 0;
+}
+
+.rowDivider {
+	height: 1rpx;
+	background: #f2f2f2;
+}
+
+.nameFoot {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 16rpx;
+	padding-bottom: 18rpx;
+}
+
+.nameHint {
+	flex: 1;
+	min-width: 0;
+	font-size: 22rpx;
+	line-height: 32rpx;
+	color: #b3b3b3;
+}
+
+.nameCount {
+	flex-shrink: 0;
+	font-size: 22rpx;
+	line-height: 32rpx;
+	color: #b3b3b3;
+}
+
+.switchWrap {
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	transform: scale(0.82);
+	transform-origin: right center;
+}
+
+/* 简介 */
+.introCard {
+	padding: 28rpx;
+}
+
+.introInput {
+	width: 100%;
+	box-sizing: border-box;
+	min-height: 132rpx;
+	margin-top: 18rpx;
+	font-size: 27rpx;
+	line-height: 46rpx;
+	color: #1f1f1f;
+	background: transparent;
+}
+
+.introFoot {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16rpx;
+	margin-top: 6rpx;
+}
+
+.introLimit {
+	font-size: 22rpx;
+	color: #b3b3b3;
+}
+
+.introCount {
+	font-size: 22rpx;
+	color: #b3b3b3;
+}
+
+/* 分类 */
+.catCard {
+	padding: 28rpx 24rpx 24rpx;
+}
+
+.catGrid {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 16rpx;
+	margin-top: 22rpx;
+}
+
+.catItem {
+	width: calc((100% - 32rpx) / 3);
+	box-sizing: border-box;
+	padding: 20rpx 0 16rpx;
+	border-radius: 20rpx;
+	border: 2rpx solid #f0f0f0;
+	background: #fafafa;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 12rpx;
+}
+
+.catItem:active {
+	opacity: 0.85;
+}
+
+.catItemActive {
+	border-color: #ff3b30;
+	background: #fff5f4;
+	box-shadow: 0 8rpx 20rpx rgba(255, 59, 48, 0.12);
+}
+
+.catIconBox {
+	width: 80rpx;
+	height: 80rpx;
+	border-radius: 18rpx;
+	background: #ffffff;
+	border: 1rpx solid rgba(0, 0, 0, 0.04);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.catIcon {
+	width: 52rpx;
+	height: 52rpx;
+}
+
+.catFallback {
+	font-size: 30rpx;
+	color: #999999;
+}
+
+.catMorePlus {
+	font-size: 40rpx;
+	line-height: 1;
+	color: #b3b3b3;
 	font-weight: 300;
 }
 
-.avatarHint {
-	font-size: 22rpx;
-	color: #8d79c9;
+.catName {
+	font-size: 24rpx;
+	color: #333333;
 }
 
-.avatarTip {
-	display: block;
-	margin-top: 12rpx;
-	font-size: 22rpx;
-	color: #8d79c9;
-}
-
-.input,
-.textarea {
-	width: 100%;
-	box-sizing: border-box;
-	min-height: 88rpx;
-	padding: 22rpx 24rpx;
-	border-radius: 20rpx;
-	background: #ffffff;
-	border: 2rpx solid rgba(125, 95, 255, 0.18);
-	font-size: 28rpx;
-	line-height: 1.45;
-	color: #1b1732;
-}
-
-.textarea {
-	min-height: 160rpx;
-	line-height: 1.45;
-}
-
-.hint {
-	display: block;
-	margin-top: 10rpx;
-	font-size: 22rpx;
-	color: #8d79c9;
-	line-height: 1.45;
-}
-
-.counter {
-	display: block;
-	margin-top: 8rpx;
-	font-size: 22rpx;
-	color: #5d37ff;
+.catItemActive .catName {
+	color: #ff3b30;
 	font-weight: 600;
 }
 
-.ph {
-	color: #b0aac4;
+.catMoreName {
+	color: #b3b3b3;
+}
+
+.scrollBottomPad {
+	height: 12rpx;
+}
+
+/* 底部操作栏 */
+.footer {
+	flex-shrink: 0;
+	padding: 16rpx 28rpx 20rpx;
+	padding-bottom: calc(20rpx + constant(safe-area-inset-bottom));
+	padding-bottom: calc(20rpx + env(safe-area-inset-bottom, 0px));
+	background: #f5f5f6;
 }
 
 .primary {
-	margin-top: 48rpx;
 	height: 96rpx;
 	border-radius: 999rpx;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	background: linear-gradient(90deg, #7d5fff 0%, #5f8bff 100%);
-	box-shadow: 0 16rpx 36rpx rgba(93, 55, 255, 0.28);
+	background: linear-gradient(90deg, #ff6a5c 0%, #ff3b30 100%);
+	box-shadow: 0 14rpx 32rpx rgba(255, 59, 48, 0.26);
 }
 
 .primary--hover {
-	opacity: 0.92;
+	opacity: 0.94;
 }
 
 .primaryTxt {
-	font-size: 30rpx;
-	font-weight: 600;
+	font-size: 32rpx;
+	font-weight: 700;
 	color: #ffffff;
 }
 </style>
