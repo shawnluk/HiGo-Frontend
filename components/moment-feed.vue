@@ -34,7 +34,7 @@
 						</view>
 					</view>
 					<view class="postMore" @click="onMore(item)">
-						<uni-icons type="more-filled" size="18" color="#5d547f"></uni-icons>
+						<uni-icons type="more-filled" size="18" color="#6b6b6b"></uni-icons>
 					</view>
 				</view>
 
@@ -68,18 +68,18 @@
 							<uni-icons
 								:type="likedMap[item.id] ? 'heart-filled' : 'heart'"
 								size="26"
-								:color="likedMap[item.id] ? '#ff5fb3' : '#5d547f'"
+								:color="likedMap[item.id] ? '#ff3b30' : '#8a8a8a'"
 							></uni-icons>
 						</view>
 						<view class="actionHit" @click="onCommentTap(item)">
-							<uni-icons type="chatbubble" size="24" color="#5d547f"></uni-icons>
+							<uni-icons type="chatbubble" size="24" color="#8a8a8a"></uni-icons>
 						</view>
 						<view class="actionHit" @click="onShareTap(item)">
-							<uni-icons type="paperplane" size="24" color="#5d547f"></uni-icons>
+							<uni-icons type="paperplane" size="24" color="#8a8a8a"></uni-icons>
 						</view>
 					</view>
 					<view class="actionHit" @click="onSaveTap(item)">
-						<uni-icons type="star" size="24" color="#5d547f"></uni-icons>
+						<uni-icons type="star" size="24" color="#8a8a8a"></uni-icons>
 					</view>
 				</view>
 
@@ -402,10 +402,10 @@
 </script>
 
 <style scoped>
-/* 与首页活动卡 / 分类栏一致的紫粉渐变与圆角体系 */
+/* 与首页活动卡 / 分类栏一致的主配色（主题红）与圆角体系 */
 .momentFeed {
 	width: 100%;
-	background: linear-gradient(180deg, #f4f5f7 0%, #f0f2ff 55%, #f4f5f7 100%);
+	background: linear-gradient(180deg, #f4f5f7 0%, #fff0ee 55%, #f4f5f7 100%);
 	padding-bottom: 24rpx;
 	box-sizing: border-box;
 }
@@ -414,9 +414,9 @@
 	margin: 10rpx 24rpx 0;
 	padding: 4rpx 4rpx 2rpx;
 	border-radius: 24rpx;
-	background: linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(248, 243, 255, 0.75) 100%);
+	background: linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(255, 245, 243, 0.75) 100%);
 	border: 2rpx solid rgba(255, 255, 255, 0.9);
-	box-shadow: 0 10rpx 28rpx rgba(105, 62, 255, 0.1);
+	box-shadow: 0 10rpx 28rpx rgba(255, 59, 48, 0.1);
 	box-sizing: border-box;
 }
 
@@ -448,13 +448,13 @@
 	border-radius: 50%;
 	padding: 4rpx;
 	box-sizing: border-box;
-	background: linear-gradient(135deg, #7d5fff 0%, #b8a0ff 42%, #ff5fb3 100%);
-	box-shadow: 0 8rpx 20rpx rgba(125, 95, 255, 0.28);
+	background: linear-gradient(135deg, #ff8a6a 0%, #ff9e8f 42%, #ff3b30 100%);
+	box-shadow: 0 8rpx 20rpx rgba(255, 59, 48, 0.28);
 }
 
 .storyRingAdd {
-	background: linear-gradient(145deg, #e8e4f5 0%, #f0eef8 100%);
-	box-shadow: 0 6rpx 14rpx rgba(50, 40, 90, 0.08);
+	background: linear-gradient(145deg, #f1eeee 0%, #f8f4f3 100%);
+	box-shadow: 0 6rpx 14rpx rgba(0, 0, 0, 0.08);
 }
 
 .storyAvatar {
@@ -462,13 +462,13 @@
 	height: 100%;
 	border-radius: 50%;
 	border: 4rpx solid #ffffff;
-	background-color: #eae8f4;
+	background-color: #f2eeee;
 }
 
 .storyName {
 	margin-top: 10rpx;
 	font-size: 22rpx;
-	color: #5d547f;
+	color: #6b6b6b;
 	max-width: 132rpx;
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -483,9 +483,9 @@
 	border-radius: 2rpx;
 	background: linear-gradient(
 		90deg,
-		rgba(125, 95, 255, 0) 0%,
-		rgba(125, 95, 255, 0.22) 50%,
-		rgba(125, 95, 255, 0) 100%
+		rgba(255, 59, 48, 0) 0%,
+		rgba(255, 59, 48, 0.22) 50%,
+		rgba(255, 59, 48, 0) 100%
 	);
 }
 
@@ -500,10 +500,10 @@
 .postCard {
 	position: relative;
 	overflow: hidden;
-	background: linear-gradient(145deg, #ffffff 0%, #f8f3ff 52%, #f0faff 100%);
+	background: linear-gradient(145deg, #ffffff 0%, #fff6f4 52%, #fff8f7 100%);
 	border-radius: 28rpx;
 	padding-bottom: 20rpx;
-	box-shadow: 0 20rpx 48rpx rgba(105, 62, 255, 0.13);
+	box-shadow: 0 20rpx 48rpx rgba(255, 59, 48, 0.13);
 	border: 2rpx solid rgba(255, 255, 255, 0.9);
 	box-sizing: border-box;
 }
@@ -516,7 +516,7 @@
 	width: 160rpx;
 	height: 160rpx;
 	border-radius: 50%;
-	background: radial-gradient(circle, rgba(125, 95, 255, 0.2) 0%, rgba(125, 95, 255, 0) 68%);
+	background: radial-gradient(circle, rgba(255, 59, 48, 0.2) 0%, rgba(255, 59, 48, 0) 68%);
 	pointer-events: none;
 	z-index: 0;
 }
@@ -543,9 +543,9 @@
 	border-radius: 50%;
 	margin-right: 18rpx;
 	flex-shrink: 0;
-	background-color: #eae8f4;
+	background-color: #f2eeee;
 	border: 2rpx solid rgba(255, 255, 255, 0.95);
-	box-shadow: 0 4rpx 12rpx rgba(50, 40, 90, 0.1);
+	box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.1);
 }
 
 .postHeadMeta {
@@ -558,13 +558,13 @@
 	font-size: 28rpx;
 	font-weight: 600;
 	letter-spacing: 0.2rpx;
-	color: #1b1732;
+	color: #1a1a1a;
 }
 
 .postActivity {
 	margin-top: 6rpx;
 	font-size: 22rpx;
-	color: #6c6392;
+	color: #8a8a8a;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
@@ -579,7 +579,7 @@
 	position: relative;
 	z-index: 1;
 	width: 100%;
-	background: linear-gradient(180deg, #0d0618 0%, #1a1430 100%);
+	background: linear-gradient(180deg, #141414 0%, #232323 100%);
 }
 
 .postSwiper {
@@ -595,7 +595,7 @@
 	width: 100%;
 	height: 750rpx;
 	display: block;
-	background-color: #120a24;
+	background-color: #1a1a1a;
 }
 
 .textOnlyWrap {
@@ -605,19 +605,19 @@
 	padding: 32rpx 26rpx;
 	background: linear-gradient(
 		90deg,
-		rgba(125, 95, 255, 0.08) 0%,
+		rgba(255, 59, 48, 0.06) 0%,
 		rgba(255, 255, 255, 0.92) 40%,
-		rgba(95, 190, 255, 0.08) 100%
+		rgba(255, 138, 106, 0.08) 100%
 	);
 	border-radius: 20rpx;
-	border: 2rpx solid rgba(125, 95, 255, 0.14);
-	box-shadow: 0 8rpx 22rpx rgba(105, 62, 255, 0.08);
+	border: 2rpx solid rgba(255, 59, 48, 0.14);
+	box-shadow: 0 8rpx 22rpx rgba(255, 59, 48, 0.08);
 }
 
 .textOnlyBody {
 	font-size: 30rpx;
 	line-height: 1.55;
-	color: #1b1732;
+	color: #1a1a1a;
 }
 
 .actionRow {
@@ -642,7 +642,7 @@
 }
 
 .actionHit:active {
-	background: rgba(125, 95, 255, 0.08);
+	background: rgba(255, 59, 48, 0.08);
 }
 
 .likeLine {
@@ -654,7 +654,7 @@
 .likeLineText {
 	font-size: 26rpx;
 	font-weight: 600;
-	color: #4a3f7d;
+	color: #6f6f6f;
 }
 
 .captionBlock {
@@ -673,13 +673,13 @@
 	flex-shrink: 0;
 	margin-right: 16rpx;
 	font-weight: 600;
-	color: #5d37ff;
+	color: #ff3b30;
 }
 
 .captionText {
 	flex: 1;
 	min-width: 0;
-	color: #1b1732;
+	color: #1a1a1a;
 	overflow-wrap: anywhere;
 	word-break: break-word;
 }
@@ -687,7 +687,7 @@
 .captionBlockDivided {
 	padding-bottom: 16rpx;
 	margin-bottom: 8rpx;
-	border-bottom: 1rpx dashed rgba(125, 95, 255, 0.28);
+	border-bottom: 1rpx dashed rgba(255, 59, 48, 0.28);
 }
 
 .commentsPreview {
@@ -699,7 +699,7 @@
 .viewAllComments {
 	display: block;
 	font-size: 26rpx;
-	color: #7b65d9;
+	color: #e8453c;
 	font-weight: 500;
 	margin-bottom: 10rpx;
 }
@@ -718,13 +718,13 @@
 	flex-shrink: 0;
 	margin-right: 16rpx;
 	font-weight: 600;
-	color: #5d37ff;
+	color: #ff3b30;
 }
 
 .commentTxt {
 	flex: 1;
 	min-width: 0;
-	color: #1b1732;
+	color: #1a1a1a;
 	overflow-wrap: anywhere;
 	word-break: break-word;
 }
@@ -751,8 +751,8 @@
 	overflow-y: auto;
 	overflow-x: hidden;
 	padding: 16rpx 18rpx;
-	background: rgba(125, 95, 255, 0.045);
-	border: 2rpx solid rgba(125, 95, 255, 0.12);
+	background: rgba(255, 59, 48, 0.045);
+	border: 2rpx solid rgba(255, 59, 48, 0.12);
 	border-radius: 18rpx;
 }
 
@@ -766,7 +766,7 @@
 	line-height: 88rpx;
 	margin: 0;
 	padding: 0;
-	border-bottom: 1rpx dashed rgba(125, 95, 255, 0.14);
+	border-bottom: 1rpx dashed rgba(255, 59, 48, 0.14);
 }
 
 .commentsExpandRow:last-child {
