@@ -2,6 +2,7 @@
 	<view class="squadSection">
 		<view class="squadHeader">
 			<text class="squadTitle">{{ title }}</text>
+			<text class="squadCreate" @tap="goCreateSquad">››› 点击创建新小队</text>
 		</view>
 		<scroll-view class="squadScroll" scroll-x :show-scrollbar="false">
 			<view class="squadRow">
@@ -37,6 +38,15 @@ export default {
 		},
 	},
 	methods: {
+		/** 跳转创建小队页面 */
+		goCreateSquad() {
+			uni.navigateTo({
+				url: '/src/create-unit/create-unit',
+				fail: () => {
+					uni.showToast({ title: '页面打开失败', icon: 'none' })
+				},
+			})
+		},
 		/** 跳转小队详情页 */
 		goSquadDetail(item) {
 			const id = item && item.id ? item.id : ''
@@ -73,6 +83,17 @@ export default {
 	font-weight: 700;
 	color: #1a1a1a;
 	letter-spacing: 0.2rpx;
+}
+
+.squadCreate {
+	margin-left: auto;
+	font-size: 24rpx;
+	font-weight: 500;
+	color: #ff3b30;
+}
+
+.squadCreate:active {
+	opacity: 0.6;
 }
 
 .squadScroll {

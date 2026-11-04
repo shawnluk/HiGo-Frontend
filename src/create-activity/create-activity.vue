@@ -8,7 +8,6 @@
 				<view class="headerTopRow">
 					<view class="headerTitles">
 						<text class="headerTitle">发布活动</text>
-						<text class="headerSubtitle">完善信息，和活动卡片展示风格一致</text>
 					</view>
 					<view class="closeBtn" @click="closeActivityModal">
 						<text class="closeBtnText">✕</text>
@@ -28,8 +27,8 @@
 				<!-- 封面 -->
 				<view class="sectionCard coverCard">
 					<view class="sectionHead">
-						<text class="sectionTag">封面</text>
-						<text class="sectionTitle">活动封面</text>
+						<text class="sectionTag">活动封面</text>
+						<!-- <text class="sectionTitle">活动封面</text> -->
 					</view>
 					<view
 						class="coverPlaceholder"
@@ -55,98 +54,113 @@
 					</view>
 				</view>
 
-				<!-- 表单 -->
-				<view class="sectionCard formCard">
-					<view class="sectionHead">
-						<text class="sectionTag">基础信息</text>
-						<text class="sectionTitle">活动详情</text>
+				<!-- 活动详情：区块标识 -->
+				<view class="sectionHead sectionHeadOuter">
+					<text class="sectionTag">活动详情</text>
+				</view>
+
+				<!-- 所在小队 / 发布圈子：合并为一个卡片 -->
+				<view class="sectionCard rowCard">
+					<view class="rowLine" @tap="onPickSquad">
+						<text class="rowLabel">所在小队</text>
+						<text class="rowValue isPlaceholder">请选择你的小队</text>
+						<text class="chevron">›</text>
 					</view>
 
-					<view class="field">
-						<text class="fieldLabel">活动标题</text>
+					<view class="rowDivider"></view>
+
+					<picker mode="selector" :range="typeOptions" range-key="category_name" @change="onTypePickerChange">
+						<view class="rowLine">
+							<text class="rowLabel">活动分类</text>
+							<text :class="['rowValue', !activityForm.category_name && 'isPlaceholder']">
+								{{ activityForm.category_name || '请选择活动分类' }}
+							</text>
+							<text class="chevron">›</text>
+						</view>
+					</picker>
+				</view>
+
+				<!-- 活动名称 / 活动时间 / 活动地点：合并为一个卡片 -->
+				<view class="sectionCard rowCard">
+					<view class="rowLine">
+						<text class="rowLabel">活动名称</text>
 						<input
-							class="fieldInput"
-							placeholder="起一个吸引人的标题"
+							class="rowInput"
+							placeholder="给活动起个名字"
 							placeholder-class="fieldPh"
 							v-model="activityForm.title"
 							:adjust-position="true"
 						/>
 					</view>
 
-					<view class="field">
-						<text class="fieldLabel">活动类型</text>
-						<picker mode="selector" :range="typeOptions" range-key="category_name" @change="onTypePickerChange">
-							<view class="fieldSelect">
-								<text :class="['fieldSelectText', !activityForm.category_name && 'isPlaceholder']">
-									{{ activityForm.category_name || '请选择活动类型' }}
-								</text>
-								<text class="chevron">›</text>
-							</view>
-						</picker>
-					</view>
+					<view class="rowDivider"></view>
 
-					<view class="field">
-						<text class="fieldLabel">活动时间</text>
+					<view class="rowLine">
+						<text class="rowLabel">活动时间</text>
 						<input
-							class="fieldInput fieldInputTime"
+							class="rowInput"
 							placeholder="请输入或选择活动时间"
 							placeholder-class="fieldPh"
 							v-model="activityForm.time_text"
 							:adjust-position="true"
 						/>
-						<view class="timePickRow">
-							<picker mode="date" :value="timeDatePart" @change="onDatePickerChange">
-								<view class="fieldSelect fieldSelectTime fieldSelectHalf">
-									<text class="fieldSelectIco">📅</text>
-									<text class="fieldSelectText">选日期</text>
-									<text class="chevron">›</text>
-								</view>
-							</picker>
-							<picker mode="time" :value="timeClockPart" @change="onTimePickerChange">
-								<view class="fieldSelect fieldSelectTime fieldSelectHalf">
-									<text class="fieldSelectIco">⏰</text>
-									<text class="fieldSelectText">选时刻</text>
-									<text class="chevron">›</text>
-								</view>
-							</picker>
-						</view>
-						<text class="timePickHint">可选：用下方按钮填入日期/时刻，仍可在上方自由修改</text>
+					</view>
+					<view class="timeChips">
+						<picker mode="date" :value="timeDatePart" @change="onDatePickerChange">
+							<view class="timeChip"><text class="timeChipText">选日期</text></view>
+						</picker>
+						<picker mode="time" :value="timeClockPart" @change="onTimePickerChange">
+							<view class="timeChip"><text class="timeChipText">选时刻</text></view>
+						</picker>
 					</view>
 
-					<view class="field">
-						<text class="fieldLabel">活动地点</text>
-						<view class="fieldRowLoc">
-							<text class="locPin">📍</text>
-							<input
-								class="fieldInput fieldInputFlex"
-								placeholder="城市、场馆或线上链接"
-								placeholder-class="fieldPh"
-								v-model="activityForm.location_text"
-								:adjust-position="true"
-							/>
+					<view class="rowDivider"></view>
+
+					<view class="rowLine">
+						<text class="rowLabel">活动地点</text>
+						<input
+							class="rowInput"
+							placeholder="城市、场馆或线上链接"
+							placeholder-class="fieldPh"
+							v-model="activityForm.location_text"
+							:adjust-position="true"
+						/>
+					</view>
+				</view>
+
+				<!-- 门票与人数 -->
+				<view class="sectionCard feeCard">
+					<text class="feeTitle">门票与人数</text>
+					<view class="feeToggle">
+						<view class="feeTab" :class="{ feeTabActive: feeMode === 'free' }" @tap="setFeeMode('free')">
+							免费
+						</view>
+						<view class="feeTab" :class="{ feeTabActive: feeMode === 'paid' }" @tap="setFeeMode('paid')">
+							收费
 						</view>
 					</view>
-
-					<view class="field">
-						<text class="fieldLabel">活动费用</text>
-						<view class="fieldRowPrice">
-							<text class="priceUnit">¥</text>
-							<input
-								class="fieldInput fieldInputFlex"
-								placeholder="0 表示免费"
-								placeholder-class="fieldPh"
-								v-model="activityForm.fee_note"
-								type="number"
-								:adjust-position="true"
-							/>
-						</view>
+					<view v-if="feeMode === 'paid'" class="feeRow">
+						<text class="rowLabel">人均票价</text>
+						<text class="priceUnit">¥</text>
+						<input
+							class="rowInput"
+							placeholder="请输入票价"
+							placeholder-class="fieldPh"
+							v-model="activityForm.fee_note"
+							type="number"
+							:adjust-position="true"
+						/>
+					</view>
+					<view class="feeRow">
+						<text class="rowLabel">人数上限</text>
+						<text class="feeLimit">20 人</text>
 					</view>
 				</view>
 
 				<view class="sectionCard descCard">
 					<view class="sectionHead">
-						<text class="sectionTag">介绍</text>
-						<text class="sectionTitle">活动描述</text>
+						<text class="sectionTag">活动介绍</text>
+						<!-- <text class="sectionTitle">活动描述</text> -->
 					</view>
 					<editor
 						id="descEditor"
@@ -165,6 +179,7 @@
 			</scroll-view>
 
 			<view class="sheetFooter safeFooter">
+				<button class="draftBtn" @click="saveDraft">存入草稿</button>
 				<button class="submitBtn" @click="submitActivity">发布活动</button>
 			</view>
 		</view>
@@ -175,6 +190,9 @@
 import { createActivity } from '@/api/modules/activity.js'
 import { fetchCategories } from '@/api/modules/category.js'
 
+/** 活动草稿在本地缓存中的键名 */
+const ACTIVITY_DRAFT_KEY = 'hiGoActivityDraft'
+
 export default {
 	data() {
 		return {
@@ -184,6 +202,7 @@ export default {
 			timeDatePart: '',
 			timeClockPart: '',
 			coverTempPath: '',
+			feeMode: 'free',
 			activityForm: {
 				title: '',
 				category_name: '',
@@ -227,9 +246,13 @@ export default {
 	/** 页面首次渲染完成：根据窗口与安全区计算滚动区高度 */
 	onReady() {
 		this.updateScrollAreaHeight()
+		// 首次测量可能早于布局完成，稍后重测一次，保证底部操作栏贴底且留出边距
+		setTimeout(() => {
+			this.updateScrollAreaHeight()
+		}, 100)
 	},
 	methods: {
-		/** 根据窗口与安全区尺寸计算滚动区可用高度 */
+		/** 根据实际渲染尺寸计算滚动区高度，保证底部操作栏贴住屏幕底边 */
 		updateScrollAreaHeight() {
 			try {
 				const sys = uni.getSystemInfoSync()
@@ -244,16 +267,35 @@ export default {
 							: 0
 				// 与 .sheet 顶距一致：安全区顶 + 少量留白（px）
 				const sheetTopGap = safeTop + 16
-				const safeBottom =
-					sys.safeAreaInsets && typeof sys.safeAreaInsets.bottom === 'number'
-						? sys.safeAreaInsets.bottom
-						: 0
-				// 非滚动区高度（与样式一致；原 560rpx 严重偏大，会把 scroll 压得过矮）：
-				// sheetGrabBar ~32rpx + sheetHeader ~118–160rpx + sheetFooter ~120rpx + 底部 safe（px）
-				const chromeRpx = 320
-				const chromeInsideSheet = Math.ceil(chromeRpx * rpx2px) + safeBottom
-				const next = Math.floor(winH - sheetTopGap - chromeInsideSheet)
-				this.scrollAreaPx = Math.max(320, next)
+				// 测量失败时的兜底估算（px 转 rpx 后计算）
+				const fallback = () => {
+					const safeBottom =
+						sys.safeAreaInsets && typeof sys.safeAreaInsets.bottom === 'number'
+							? sys.safeAreaInsets.bottom
+							: 0
+					const chromeRpx = 310
+					this.scrollAreaPx = Math.max(
+						320,
+						Math.floor(winH - sheetTopGap - Math.ceil(chromeRpx * rpx2px) - safeBottom)
+					)
+				}
+				const query = uni.createSelectorQuery().in(this)
+				query.select('.sheetGrabBar').boundingClientRect()
+				query.select('.sheetHeader').boundingClientRect()
+				query.select('.sheetFooter').boundingClientRect()
+				query.exec((res) => {
+					const grab = res && res[0]
+					const header = res && res[1]
+					const footer = res && res[2]
+					if (!header || !footer || !header.height || !footer.height) {
+						fallback()
+						return
+					}
+					// 抓手条上下外边距 16rpx + 8rpx，boundingClientRect 不含 margin
+					const grabH = (grab && grab.height ? grab.height : 0) + 24 * rpx2px
+					const chrome = header.height + footer.height + grabH
+					this.scrollAreaPx = Math.max(240, Math.floor(winH - sheetTopGap - chrome))
+				})
 			} catch (e) {
 				this.scrollAreaPx = 480
 			}
@@ -318,6 +360,20 @@ export default {
 		onTimePickerChange(e) {
 			this.timeClockPart = e.detail.value || ''
 			this.mergeDateTimeIntoForm()
+		},
+		/** 选择所在小队：小队列表接口未接入，暂以提示占位 */
+		onPickSquad() {
+			uni.showToast({ title: '小队列表暂未开放', icon: 'none' })
+		},
+		/** 门票模式切换：免费时费用置 0，收费时清空待填 */
+		setFeeMode(mode) {
+			if (this.feeMode === mode) return
+			this.feeMode = mode
+			if (mode === 'free') {
+				this.activityForm.fee_note = '0'
+			} else if (this.activityForm.fee_note === '0') {
+				this.activityForm.fee_note = ''
+			}
 		},
 		/** 关闭弹窗并返回用户页 */
 		closeActivityModal() {
@@ -390,6 +446,22 @@ export default {
 					uni.showToast({ title: '选择图片失败', icon: 'none' })
 				},
 			})
+		},
+		/** 保存当前表单为本地草稿 */
+		saveDraft() {
+			const draft = {
+				...this.activityForm,
+				timeDatePart: this.timeDatePart,
+				timeClockPart: this.timeClockPart,
+				coverTempPath: this.coverTempPath,
+				savedAt: Date.now(),
+			}
+			try {
+				uni.setStorageSync(ACTIVITY_DRAFT_KEY, draft)
+				uni.showToast({ title: '草稿已保存', icon: 'success' })
+			} catch (e) {
+				uni.showToast({ title: '草稿保存失败', icon: 'none' })
+			}
 		},
 		/** 校验并提交活动，成功后重置表单 */
 		async submitActivity() {
@@ -464,7 +536,7 @@ export default {
 .backdrop {
 	position: absolute;
 	inset: 0;
-	background: rgba(27, 23, 50, 0.45);
+	background: rgba(0, 0, 0, 0.45);
 }
 
 .sheet {
@@ -476,9 +548,9 @@ export default {
 	top: calc(16px + env(safe-area-inset-top, 0px));
 	/* 贴屏幕底边，避免整块面板上浮导致按钮离屏底过远；底部安全区由 footer 内边距承担 */
 	bottom: 0;
-	background: linear-gradient(180deg, #f6f4ff 0%, #f5f5f8 28%, #ededf2 100%);
+	background: #f5f5f6;
 	border-radius: 28rpx 28rpx 0 0;
-	box-shadow: 0 -12rpx 48rpx rgba(105, 62, 255, 0.12), 0 16rpx 40rpx rgba(105, 62, 255, 0.06);
+	box-shadow: 0 -12rpx 48rpx rgba(0, 0, 0, 0.1), 0 16rpx 40rpx rgba(0, 0, 0, 0.05);
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
@@ -490,7 +562,7 @@ export default {
 	width: 72rpx;
 	height: 8rpx;
 	border-radius: 999rpx;
-	background: rgba(125, 95, 255, 0.22);
+	background: rgba(0, 0, 0, 0.12);
 	margin-top: 16rpx;
 	margin-bottom: 8rpx;
 }
@@ -517,25 +589,18 @@ export default {
 	display: block;
 	font-size: 38rpx;
 	font-weight: 700;
-	color: #1b1732;
+	color: #1f1f1f;
 	letter-spacing: 0.5rpx;
 }
 
-.headerSubtitle {
-	display: block;
-	margin-top: 10rpx;
-	font-size: 24rpx;
-	color: #6c6392;
-	line-height: 34rpx;
-}
 
 .closeBtn {
 	width: 64rpx;
 	height: 64rpx;
 	border-radius: 50%;
-	background: rgba(255, 255, 255, 0.92);
-	border: 2rpx solid rgba(125, 95, 255, 0.18);
-	box-shadow: 0 8rpx 20rpx rgba(105, 62, 255, 0.1);
+	background: #ffffff;
+	border: 2rpx solid rgba(0, 0, 0, 0.06);
+	box-shadow: 0 8rpx 20rpx rgba(0, 0, 0, 0.06);
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -549,7 +614,7 @@ export default {
 
 .closeBtnText {
 	font-size: 28rpx;
-	color: #7b65d9;
+	color: #333333;
 	font-weight: 600;
 	line-height: 1;
 }
@@ -561,24 +626,27 @@ export default {
 	bottom: 0;
 	height: 6rpx;
 	border-radius: 999rpx;
-	background: linear-gradient(90deg, #7d5fff 0%, #ff5fb3 55%, #5fbeff 100%);
-	opacity: 0.35;
+	background: linear-gradient(90deg, #ff6a5c 0%, #ff3b30 100%);
+	opacity: 0.45;
 }
 
 .sheetScroll {
 	width: 100%;
+	/* 固定高度之外再用 flex 兜底：估算偏差时自动伸缩，避免把底部操作栏挤出面板 */
+	flex: 1;
+	min-height: 0;
 	padding: 0 24rpx;
 	box-sizing: border-box;
 }
 
 .sectionCard {
 	position: relative;
-	background: linear-gradient(145deg, #ffffff 0%, #faf8ff 48%, #f5f9ff 100%);
-	border-radius: 28rpx;
+	background: #ffffff;
+	border-radius: 32rpx;
 	padding: 26rpx 24rpx 28rpx;
 	margin-bottom: 22rpx;
-	box-shadow: 0 16rpx 40rpx rgba(105, 62, 255, 0.1);
-	border: 2rpx solid rgba(255, 255, 255, 0.9);
+	box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.05);
+	border: 2rpx solid rgba(0, 0, 0, 0.03);
 	/* 不要用 overflow:hidden，部分端上会影响原生 input / editor 聚焦与绘制 */
 	overflow: visible;
 }
@@ -591,7 +659,7 @@ export default {
 	width: 140rpx;
 	height: 140rpx;
 	border-radius: 50%;
-	background: radial-gradient(circle, rgba(125, 95, 255, 0.14) 0%, rgba(125, 95, 255, 0) 70%);
+	background: radial-gradient(circle, rgba(255, 59, 48, 0.08) 0%, rgba(255, 59, 48, 0) 70%);
 	pointer-events: none;
 }
 
@@ -610,8 +678,8 @@ export default {
 	font-size: 22rpx;
 	font-weight: 600;
 	color: #ffffff;
-	background: linear-gradient(90deg, #7d5fff 0%, #ff5fb3 100%);
-	box-shadow: 0 8rpx 18rpx rgba(125, 95, 255, 0.28);
+	background: linear-gradient(90deg, #ff6a5c 0%, #ff3b30 100%);
+	box-shadow: 0 8rpx 18rpx rgba(255, 59, 48, 0.22);
 }
 
 .sectionTitle {
@@ -619,7 +687,7 @@ export default {
 	margin-top: 14rpx;
 	font-size: 30rpx;
 	font-weight: 700;
-	color: #1b1732;
+	color: #1f1f1f;
 }
 
 .coverPlaceholder {
@@ -629,13 +697,8 @@ export default {
 	height: 280rpx;
 	border-radius: 24rpx;
 	overflow: hidden;
-	border: 2rpx dashed rgba(125, 95, 255, 0.35);
-	background: linear-gradient(
-		135deg,
-		rgba(125, 95, 255, 0.06) 0%,
-		rgba(95, 190, 255, 0.08) 50%,
-		rgba(255, 95, 179, 0.06) 100%
-	);
+	border: none;
+	background: linear-gradient(135deg, #ffa271 0%, #f2607a 48%, #9b5ce0 100%);
 }
 
 .coverPlaceholder:active {
@@ -643,8 +706,7 @@ export default {
 }
 
 .coverPlaceholder.hasCover {
-	border-style: solid;
-	border-color: rgba(125, 95, 255, 0.22);
+	box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.08);
 }
 
 .coverPreview {
@@ -663,7 +725,7 @@ export default {
 	bottom: 0;
 	z-index: 1;
 	padding: 16rpx;
-	background: linear-gradient(to top, rgba(27, 23, 50, 0.55), transparent);
+	background: linear-gradient(to top, rgba(0, 0, 0, 0.55), transparent);
 	display: flex;
 	align-items: flex-end;
 	justify-content: center;
@@ -692,9 +754,9 @@ export default {
 	width: 88rpx;
 	height: 88rpx;
 	border-radius: 50%;
-	background: rgba(255, 255, 255, 0.95);
-	border: 2rpx solid rgba(125, 95, 255, 0.2);
-	box-shadow: 0 12rpx 28rpx rgba(105, 62, 255, 0.15);
+	background: #ffffff;
+	border: none;
+	box-shadow: 0 8rpx 20rpx rgba(0, 0, 0, 0.12);
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -704,164 +766,178 @@ export default {
 .coverGlyph {
 	font-size: 44rpx;
 	font-weight: 300;
-	color: #7d5fff;
+	color: #333333;
 	line-height: 1;
 }
 
 .coverHint {
 	font-size: 28rpx;
 	font-weight: 600;
-	color: #4a3f7d;
+	color: #ffffff;
 }
 
 .coverSub {
 	margin-top: 10rpx;
 	font-size: 22rpx;
-	color: #8d79c4;
+	color: rgba(255, 255, 255, 0.85);
 	text-align: center;
 	line-height: 32rpx;
 }
 
-.field {
-	margin-bottom: 26rpx;
-	position: relative;
-	z-index: 1;
+.rowCard {
+	padding: 0 28rpx;
 }
 
-.field:last-child {
-	margin-bottom: 0;
+.sectionCard.rowCard::before {
+	display: none;
 }
 
-.fieldLabel {
-	display: block;
-	font-size: 24rpx;
-	font-weight: 600;
-	color: #7b65d9;
-	margin-bottom: 12rpx;
+.sectionHeadOuter {
+	margin: 4rpx 0 14rpx 6rpx;
 }
 
-.fieldInput {
-	width: 100%;
-	box-sizing: border-box;
-	min-height: 88rpx;
-	padding: 22rpx 24rpx;
-	border-radius: 22rpx;
-	font-size: 28rpx;
-	color: #1b1732;
-	background: rgba(255, 255, 255, 0.92);
-	border: 2rpx solid rgba(125, 95, 255, 0.14);
-	box-shadow: 0 8rpx 20rpx rgba(125, 95, 255, 0.06);
-}
-
-.fieldPh {
-	color: #a59bcc;
-	font-size: 28rpx;
-}
-
-.fieldInputFlex {
-	flex: 1;
-	width: auto;
-	min-width: 0;
-}
-
-.fieldSelect {
-	min-height: 88rpx;
-	padding: 22rpx 20rpx 22rpx 24rpx;
-	border-radius: 22rpx;
-	background: rgba(255, 255, 255, 0.92);
-	border: 2rpx solid rgba(125, 95, 255, 0.14);
-	box-shadow: 0 8rpx 20rpx rgba(125, 95, 255, 0.06);
+.rowLine {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
-	gap: 12rpx;
-}
-
-.fieldSelectTime {
-	background: linear-gradient(90deg, rgba(125, 95, 255, 0.08) 0%, rgba(255, 95, 179, 0.06) 100%);
-	border-color: rgba(125, 95, 255, 0.22);
-}
-
-.timePickRow {
-	display: flex;
-	align-items: stretch;
 	gap: 16rpx;
+	min-height: 104rpx;
 }
 
-.fieldSelectHalf {
-	flex: 1;
-	min-width: 0;
-	box-sizing: border-box;
-}
-
-.fieldInputTime {
-	margin-bottom: 16rpx;
-}
-
-.timePickHint {
-	display: block;
-	margin-top: 12rpx;
-	font-size: 22rpx;
-	color: #8d79c4;
-	line-height: 32rpx;
-}
-
-.fieldSelectIco {
-	font-size: 26rpx;
+.rowLabel {
+	font-size: 28rpx;
+	font-weight: 500;
+	color: #1f1f1f;
 	flex-shrink: 0;
 }
 
-.fieldSelectText {
+.rowInput {
+	flex: 1;
+	width: auto;
+	min-width: 0;
+	height: 88rpx;
+	font-size: 28rpx;
+	color: #1f1f1f;
+	text-align: right;
+	background: transparent;
+}
+
+.fieldPh {
+	color: #b3b3b3;
+	font-size: 28rpx;
+}
+
+.rowValue {
 	flex: 1;
 	min-width: 0;
 	font-size: 28rpx;
-	color: #4a3f7d;
-	font-weight: 500;
+	color: #1f1f1f;
+	text-align: right;
 }
 
-.fieldSelectText.isPlaceholder {
-	color: #a59bcc;
-	font-weight: 400;
+.rowValue.isPlaceholder {
+	color: #b3b3b3;
+}
+
+.rowDivider {
+	height: 1rpx;
+	background: #f0f0f0;
+}
+
+.timeChips {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 16rpx;
+	padding-bottom: 22rpx;
+	margin-top: -8rpx;
+}
+
+.timeChip {
+	height: 56rpx;
+	padding: 0 24rpx;
+	border-radius: 999rpx;
+	background: rgba(255, 59, 48, 0.06);
+	border: 1rpx solid rgba(255, 59, 48, 0.16);
+	display: flex;
+	align-items: center;
+}
+
+.timeChipText {
+	font-size: 24rpx;
+	font-weight: 500;
+	color: #ff3b30;
 }
 
 .chevron {
 	font-size: 36rpx;
-	color: #b8aee0;
+	color: #c8c8c8;
 	font-weight: 300;
 	transform: rotate(0deg);
 	line-height: 1;
 	flex-shrink: 0;
 }
 
-.fieldRowLoc,
-.fieldRowPrice {
-	display: flex;
-	align-items: center;
-	gap: 14rpx;
-	min-height: 88rpx;
-	padding: 0 20rpx 0 22rpx;
-	border-radius: 22rpx;
-	background: linear-gradient(90deg, rgba(95, 190, 255, 0.08) 0%, rgba(95, 152, 255, 0.06) 100%);
-	border: 2rpx solid rgba(95, 152, 255, 0.2);
-	box-shadow: 0 8rpx 20rpx rgba(95, 152, 255, 0.08);
-}
-
-.fieldRowPrice {
-	background: rgba(255, 255, 255, 0.92);
-	border-color: rgba(125, 95, 255, 0.14);
-	box-shadow: 0 8rpx 20rpx rgba(125, 95, 255, 0.06);
-}
-
-.locPin {
-	font-size: 26rpx;
+.priceUnit {
+	font-size: 28rpx;
+	font-weight: 700;
+	color: #ff3b30;
 	flex-shrink: 0;
 }
 
-.priceUnit {
+.feeCard {
+	padding: 28rpx;
+}
+
+.sectionCard.feeCard::before {
+	display: none;
+}
+
+.feeTitle {
+	display: block;
 	font-size: 30rpx;
 	font-weight: 700;
-	color: #7d5fff;
-	flex-shrink: 0;
+	color: #1f1f1f;
+	margin-bottom: 24rpx;
+}
+
+.feeToggle {
+	display: flex;
+	align-items: center;
+	gap: 8rpx;
+	padding: 6rpx;
+	border-radius: 16rpx;
+	background: #f5f5f6;
+}
+
+.feeTab {
+	flex: 1;
+	height: 76rpx;
+	line-height: 76rpx;
+	text-align: center;
+	font-size: 28rpx;
+	color: #999999;
+	border-radius: 12rpx;
+}
+
+.feeTabActive {
+	background: #ff3b30;
+	color: #ffffff;
+	font-weight: 600;
+}
+
+.feeRow {
+	display: flex;
+	align-items: center;
+	gap: 16rpx;
+	min-height: 104rpx;
+	margin-top: 8rpx;
+	border-top: 1rpx solid #f0f0f0;
+}
+
+.feeLimit {
+	margin-left: auto;
+	font-size: 28rpx;
+	color: #1f1f1f;
 }
 
 .formEditor {
@@ -869,10 +945,10 @@ export default {
 	min-height: 220rpx;
 	padding: 20rpx;
 	border-radius: 22rpx;
-	background: rgba(255, 255, 255, 0.95);
-	border: 2rpx solid rgba(125, 95, 255, 0.14);
+	background: #f7f7f7;
+	border: 2rpx solid rgba(0, 0, 0, 0.04);
 	box-sizing: border-box;
-	box-shadow: inset 0 2rpx 12rpx rgba(125, 95, 255, 0.04);
+	box-shadow: none;
 }
 
 .insertImgBtn {
@@ -882,11 +958,11 @@ export default {
 	padding: 0;
 	font-size: 26rpx;
 	font-weight: 600;
-	color: #5d37ff;
-	border: 2rpx solid rgba(125, 95, 255, 0.35);
-	background: linear-gradient(90deg, rgba(125, 95, 255, 0.1) 0%, rgba(255, 95, 179, 0.08) 100%);
+	color: #ff3b30;
+	border: 2rpx solid rgba(255, 59, 48, 0.3);
+	background: rgba(255, 59, 48, 0.06);
 	border-radius: 999rpx;
-	box-shadow: 0 8rpx 20rpx rgba(125, 95, 255, 0.12);
+	box-shadow: none;
 }
 
 .insertImgBtn::after {
@@ -899,17 +975,46 @@ export default {
 
 .sheetFooter {
 	flex-shrink: 0;
-	padding: 12rpx 28rpx 12rpx;
-	padding-bottom: calc(12rpx + constant(safe-area-inset-bottom));
-	padding-bottom: calc(12rpx + env(safe-area-inset-bottom, 0px));
-	background: linear-gradient(180deg, rgba(245, 245, 248, 0) 0%, #ebebf0 36%);
-	border-top: 2rpx solid rgba(255, 255, 255, 0.85);
+	display: flex;
+	align-items: center;
+	gap: 20rpx;
+	padding: 20rpx 28rpx 20rpx;
+	padding-bottom: calc(20rpx + constant(safe-area-inset-bottom));
+	padding-bottom: calc(20rpx + env(safe-area-inset-bottom, 0px));
+	background: transparent;
+	border-top: none;
+}
+
+.draftBtn {
+	width: 200rpx;
+	height: 84rpx;
+	line-height: 84rpx;
+	padding: 0;
+	margin: 0;
+	border-radius: 999rpx;
+	font-size: 28rpx;
+	font-weight: 600;
+	color: #333333;
+	background: #ffffff;
+	border: 2rpx solid rgba(0, 0, 0, 0.12);
+	flex-shrink: 0;
+}
+
+.draftBtn::after {
+	border: none;
+}
+
+.draftBtn:active {
+	opacity: 0.9;
+	transform: scale(0.99);
 }
 
 .submitBtn {
-	width: 100%;
-	height: 96rpx;
-	line-height: 96rpx;
+	flex: 1;
+	width: auto;
+	min-width: 0;
+	height: 84rpx;
+	line-height: 84rpx;
 	padding: 0;
 	margin: 0;
 	border-radius: 999rpx;
@@ -917,8 +1022,8 @@ export default {
 	font-weight: 700;
 	color: #ffffff;
 	border: none;
-	background: linear-gradient(145deg, #56b6ff 0%, #7d5fff 45%, #1677ff 100%);
-	box-shadow: 0 14rpx 32rpx rgba(22, 119, 255, 0.28), 0 8rpx 20rpx rgba(125, 95, 255, 0.18);
+	background: linear-gradient(150deg, #ff6a5c 0%, #ff3b30 58%, #f32a22 100%);
+	box-shadow: 0 14rpx 32rpx rgba(255, 59, 48, 0.28);
 }
 
 .submitBtn::after {
