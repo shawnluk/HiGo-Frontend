@@ -1,5 +1,5 @@
 <template>
-	<PageScaffold class="messagePage" :tab-index="2">
+	<PageScaffold class="messagePage" :tab-index="3">
 		<!-- 消息分类切换：系统推送 / 聊天室 -->
 		<view class="tabBar">
 			<view

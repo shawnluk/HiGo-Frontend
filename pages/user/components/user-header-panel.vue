@@ -15,27 +15,32 @@
 							:class="{ guest: !isLoggedIn }"
 							@click="$emit('username-click')"
 						>{{ displayName }}</view>
-						<view class="userId">趣玩号：{{ partnerId }} <text class="idTag">{{ partnerIdTag }}</text></view>
-						<view class="userBadges">
-							<text v-for="(badge, idx) in badges" :key="idx" class="badge">{{ badge }}</text>
-						</view>
+						<view v-if="partnerId" class="userId">趣玩号：{{ partnerId }} <text class="idTag">{{ partnerIdTag }}</text></view>
 					</view>
 				</view>
 			</view>
 
 			<view class="memberStrip">
+				<!-- 原「成为会员」入口，暂时隐藏，后续可能复用
 				<view class="memberText">
 					<text class="memberTitle">{{ memberTitle }}</text>
 					<text class="memberDesc">{{ memberDesc }}</text>
 				</view>
 				<text class="memberLink">{{ memberLink }}</text>
+				-->
+				<view class="memberStats">
+					<view class="memberStat" v-for="item in stats" :key="item.label">
+						<text class="memberStatValue">{{ item.value }}</text>
+						<text class="memberStatLabel">{{ item.label }}</text>
+					</view>
+				</view>
 			</view>
 		</view>
 	</view>
 </template>
 
 <script>
-import { MOCK_USER_HEADER } from '@/mock/user-display.js'
+import { MOCK_USER_FOLLOW_STATS, MOCK_USER_HEADER } from '@/mock/user-display.js'
 
 export default {
 	name: 'UserHeaderPanel',
@@ -54,16 +59,22 @@ export default {
 		},
 		partnerId: {
 			type: String,
-			default: MOCK_USER_HEADER.partnerId,
+			default: '',
 		},
 		partnerIdTag: {
 			type: String,
-			default: MOCK_USER_HEADER.partnerIdTag,
+			default: '',
 		},
 		badges: {
 			type: Array,
-			default: () => [...MOCK_USER_HEADER.badges],
+			default: () => [],
 		},
+		// 关注 / 粉丝 / 获赞 / 场活动 统计
+		stats: {
+			type: Array,
+			default: () => MOCK_USER_FOLLOW_STATS.map((row) => ({ ...row })),
+		},
+		// 原「成为会员」文案与入口，模板中暂时注释保留，后续可能复用
 		memberTitle: {
 			type: String,
 			default: MOCK_USER_HEADER.memberTitle,
@@ -81,14 +92,13 @@ export default {
 </script>
 
 <style scoped>
-/* 与首页 HomeActivityCard 默认主题同系 */
+/* 个人主页头部：设计稿红色渐变主视觉，铺满左右与顶部，仅下方两角圆角 */
 .profileCard {
 	position: relative;
 	overflow: hidden;
-	background: linear-gradient(145deg, #ffffff 0%, #f8f3ff 52%, #f0faff 100%);
-	border-radius: 32rpx;
-	box-shadow: 0 20rpx 48rpx rgba(105, 62, 255, 0.13);
-	border: 2rpx solid rgba(255, 255, 255, 0.9);
+	background: linear-gradient(150deg, #ff5c4d 0%, #ff3b30 55%, #f52a24 100%);
+	border-radius: 0 0 32rpx 32rpx;
+	box-shadow: 0 12rpx 30rpx rgba(255, 59, 48, 0.2);
 }
 
 .profileCard::before {
@@ -99,7 +109,7 @@ export default {
 	width: 180rpx;
 	height: 180rpx;
 	border-radius: 50%;
-	background: radial-gradient(circle, rgba(125, 95, 255, 0.22) 0%, rgba(125, 95, 255, 0) 70%);
+	background: radial-gradient(circle, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0) 70%);
 	pointer-events: none;
 }
 
@@ -109,7 +119,8 @@ export default {
 }
 
 .profileHeader {
-	padding: 26rpx 22rpx 20rpx;
+	/* 顶部铺满后留出更充裕的上内边距 */
+	padding: 48rpx 22rpx 20rpx;
 }
 
 .userInfo {
@@ -122,9 +133,10 @@ export default {
 	width: 120rpx;
 	height: 120rpx;
 	border-radius: 50%;
-	border: 3rpx solid rgba(255, 255, 255, 0.95);
-	box-shadow: 0 14rpx 28rpx rgba(50, 40, 90, 0.2);
+	border: 4rpx solid rgba(255, 255, 255, 0.95);
+	box-shadow: 0 14rpx 28rpx rgba(150, 20, 15, 0.28);
 	overflow: hidden;
+	background: #ffffff;
 }
 
 .userDetails {
@@ -135,7 +147,7 @@ export default {
 .username {
 	font-size: 36rpx;
 	font-weight: 700;
-	color: #1b1732;
+	color: #ffffff;
 	margin-bottom: 8rpx;
 	letter-spacing: 0.2rpx;
 }
@@ -143,12 +155,12 @@ export default {
 .username.guest {
 	text-decoration: underline;
 	text-underline-offset: 6rpx;
-	color: #5d37ff;
+	color: rgba(255, 255, 255, 0.92);
 }
 
 .userId {
 	font-size: 24rpx;
-	color: #6c6392;
+	color: rgba(255, 255, 255, 0.82);
 	margin-bottom: 12rpx;
 }
 
@@ -156,38 +168,48 @@ export default {
 	font-size: 20rpx;
 }
 
-.userBadges {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 10rpx;
-}
-
-.badge {
-	display: inline-flex;
-	align-items: center;
-	height: 40rpx;
-	font-size: 22rpx;
-	font-weight: 600;
-	color: #ffffff;
-	background: linear-gradient(90deg, #7d5fff 0%, #ff5fb3 100%);
-	padding: 0 16rpx;
-	border-radius: 20rpx;
-	box-shadow: 0 8rpx 18rpx rgba(125, 95, 255, 0.28);
-}
-
 .memberStrip {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
+	justify-content: center;
 	gap: 20rpx;
 	padding: 20rpx 22rpx 22rpx;
 	margin: 0 6rpx 8rpx;
 	border-radius: 24rpx;
-	background: linear-gradient(90deg, rgba(125, 95, 255, 0.12) 0%, rgba(255, 95, 179, 0.1) 100%);
-	border: 1rpx solid rgba(125, 95, 255, 0.22);
-	box-shadow: 0 8rpx 20rpx rgba(125, 95, 255, 0.12);
+	background: rgba(255, 255, 255, 0.16);
+	border: 1rpx solid rgba(255, 255, 255, 0.3);
+	box-shadow: 0 8rpx 20rpx rgba(150, 20, 15, 0.16);
 }
 
+/* 关注 / 粉丝 / 获赞 / 场活动：横向居中均分 */
+.memberStats {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	justify-content: space-around;
+}
+
+.memberStat {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 8rpx;
+	min-width: 0;
+}
+
+.memberStatValue {
+	font-size: 34rpx;
+	font-weight: 700;
+	line-height: 1.1;
+	color: #ffffff;
+}
+
+.memberStatLabel {
+	font-size: 22rpx;
+	color: rgba(255, 255, 255, 0.82);
+}
+
+/* 以下为原「成为会员」条样式，模板已注释，保留备用 */
 .memberText {
 	flex: 1;
 	min-width: 0;
@@ -199,12 +221,12 @@ export default {
 .memberTitle {
 	font-size: 30rpx;
 	font-weight: 700;
-	color: #1b1732;
+	color: #ffffff;
 }
 
 .memberDesc {
 	font-size: 24rpx;
-	color: #6c6392;
+	color: rgba(255, 255, 255, 0.86);
 	line-height: 1.45;
 }
 
@@ -212,6 +234,6 @@ export default {
 	flex-shrink: 0;
 	font-size: 24rpx;
 	font-weight: 700;
-	color: #5d37ff;
+	color: #ffffff;
 }
 </style>

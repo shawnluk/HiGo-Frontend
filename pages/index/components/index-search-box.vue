@@ -60,7 +60,8 @@ export default {
 	padding: 0 22rpx;
 	border-radius: 999rpx;
 	background: #f5f5f5;
-	border: 1rpx solid rgba(0, 0, 0, 0.04);
+	/* 边框改用当前主题红 */
+	border: 1rpx solid #ff3b30;
 }
 
 .searchIcon {

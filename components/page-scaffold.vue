@@ -15,7 +15,7 @@ import BottomTabBar from '@/components/bottom-tab-bar.vue'
 
 /**
  * 主 Tab 页统一骨架：顶栏 + 主内容 slot + 自定义底栏。
- * @prop {number} tabIndex 当前 Tab 下标 0~3，与 bottom-tab-bar 一致
+ * @prop {number} tabIndex 当前 Tab 下标 0~4，与 bottom-tab-bar 一致
  * @prop {boolean} showTopBar 是否显示顶图
  * @prop {boolean} showBottomTabBar 是否显示底栏（如裁剪全屏时可 false）
  */

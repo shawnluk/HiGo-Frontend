@@ -13,21 +13,19 @@ export const MOCK_USER_DISPLAY_NAME_LOGGED_IN = 'HiGoer'
 
 /** 头部资料卡：取伙号、徽章、会员条文案 */
 export const MOCK_USER_HEADER = {
-	partnerId: '000001',
-	partnerIdTag: '🟠',
-	// badges: ['🔄1年', '🎪', '🛡️'],
-	badges: [''],
 	memberTitle: '成为会员',
 	memberDesc: '付费一场活动，立即成为HiGo会员',
 	memberLink: '查看会员权益 ›',
 }
 
-/** 伙柴 / 伙卡 / 伙星（统计条） */
-export const MOCK_USER_STATS_ITEMS = [
-	{ icon: '🔥', label: '伙柴', value: 0 },
-	{ icon: '🎫', label: '伙卡', value: 0 },
+/** 头部统计：关注 / 粉丝 / 获赞 / 场活动（对齐设计稿数值） */
+export const MOCK_USER_FOLLOW_STATS = [
+	{ label: '关注', value: '0' },
+	{ label: '粉丝', value: '0' },
+	{ label: '获赞', value: '0' },
+	{ label: '场活动', value: '0' },
 ]
-export const MOCK_USER_STAR_VALUE = 5
+
 
 /** 数据宫格：小队 / 好友等 */
 export const MOCK_USER_DATA_ITEMS = [
@@ -35,6 +33,28 @@ export const MOCK_USER_DATA_ITEMS = [
 	{ label: '好友', value: 0 },
 	{ label: '历史活动', value: 0 },
 	{ label: '相册', value: 0 },
+]
+
+/** 顶部快捷入口（对齐设计稿：发布活动 / 管理小队 / 活动数据 / 收益明细） */
+export const MOCK_USER_QUICK_ENTRIES = [
+	{ icon: '📣', label: '发布活动', bg: '#fdf1f1' },
+	{ icon: '📖', label: '管理小队', bg: '#f1f8f2' },
+	{ icon: '📊', label: '活动数据', bg: '#f1f5ff' },
+	{ icon: '💰', label: '收益明细', bg: '#fff8ec' },
+]
+
+/** 内容/资产列表卡片：我的行程、我的动态、我的收藏 */
+export const MOCK_USER_CONTENT_LIST = [
+	{ icon: '🧳', label: '我的行程', value: '0 场待参加', bg: '#eef4ff' },
+	{ icon: '🖼️', label: '我的动态', value: '', bg: '#f1f5ff' },
+	{ icon: '❤️', label: '我的收藏', value: '0个活动', bg: '#fff0f1' },
+]
+
+/** 服务/设置列表卡片：券票与订单、我的客服、我的设置 */
+export const MOCK_USER_ACCOUNT_LIST = [
+	{ icon: '🎫', label: '券票与订单', value: '', bg: '#fff8ec' },
+	{ icon: '🎧', label: '我的客服', value: '', bg: '#f1f8f2' },
+	{ icon: '⚙️', label: '我的设置', value: '', bg: '#f2f2f3' },
 ]
 
 /** 服务入口宫格 */

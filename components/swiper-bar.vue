@@ -51,12 +51,26 @@ export default {
 <style scoped>
 	.banner {
 		padding-top: 10rpx;
+		/* 左右与下方卡片保持一致的 24rpx 边距 */
+		padding-left: 24rpx;
+		padding-right: 24rpx;
 		width: 100%;
+		box-sizing: border-box;
 		/* height: 280rpx; */
+		/* 轮播图四角圆角，并裁切内部图片 */
+		border-radius: 24rpx;
+		overflow: hidden;
+	}
+	/* swiper / swiper-item 同步圆角，避免 H5 与小程序下图片溢出直角 */
+	.banner swiper,
+	.banner swiper-item {
+		border-radius: 24rpx;
+		overflow: hidden;
 	}
 	.banner image {
 		width: 100%;
 		height: 100%;
+		border-radius: 24rpx;
 	}	
 
 </style> 

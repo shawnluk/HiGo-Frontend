@@ -27,7 +27,7 @@ export default {
 	position: fixed;
 	bottom: 180rpx;
 	left: 30rpx;
-	background: linear-gradient(145deg, #56b6ff 0%, #2d8cff 58%, #1677ff 100%);
+	background: linear-gradient(150deg, #ff6a5c 0%, #ff3b30 58%, #f32a22 100%);
 	color: #ffffff;
 	width: 120rpx;
 	height: 120rpx;
@@ -37,7 +37,7 @@ export default {
 	align-items: center;
 	justify-content: center;
 	border: 2rpx solid rgba(255, 255, 255, 0.7);
-	box-shadow: 0 14rpx 30rpx rgba(22, 119, 255, 0.26), 0 6rpx 14rpx rgba(86, 182, 255, 0.2);
+	box-shadow: 0 14rpx 30rpx rgba(255, 59, 48, 0.3), 0 6rpx 14rpx rgba(255, 106, 92, 0.22);
 	overflow: visible;
 	transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
 	z-index: 99;
@@ -67,8 +67,8 @@ export default {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	background: linear-gradient(145deg, rgba(255, 255, 255, 0.96) 0%, rgba(222, 241, 255, 0.96) 60%, rgba(156, 209, 255, 0.9) 100%);
-	box-shadow: 0 4rpx 12rpx rgba(22, 119, 255, 0.28);
+	background: linear-gradient(145deg, rgba(255, 255, 255, 0.96) 0%, rgba(255, 236, 233, 0.96) 60%, rgba(255, 196, 189, 0.9) 100%);
+	box-shadow: 0 4rpx 12rpx rgba(255, 59, 48, 0.26);
 	border: 1rpx solid rgba(255, 255, 255, 0.85);
 }
 
@@ -76,7 +76,7 @@ export default {
 	font-size: 14rpx;
 	line-height: 1;
 	font-weight: 700;
-	color: #1677ff;
+	color: #ff3b30;
 	letter-spacing: 1rpx;
 }
 
@@ -111,7 +111,7 @@ export default {
 
 .publishBtn:active {
 	transform: scale(0.95);
-	box-shadow: 0 8rpx 18rpx rgba(22, 119, 255, 0.2), 0 4rpx 10rpx rgba(86, 182, 255, 0.16);
+	box-shadow: 0 8rpx 18rpx rgba(255, 59, 48, 0.22), 0 4rpx 10rpx rgba(255, 106, 92, 0.18);
 	filter: brightness(1.03);
 }
 
@@ -190,7 +190,7 @@ export default {
 	font-size: 46rpx;
 	line-height: 44rpx;
 	font-weight: 700;
-	text-shadow: 0 2rpx 8rpx rgba(13, 71, 161, 0.2);
+	text-shadow: 0 2rpx 8rpx rgba(150, 20, 15, 0.24);
 	transition: transform 0.2s ease;
 }
 
@@ -202,7 +202,7 @@ export default {
 	line-height: 22rpx;
 	font-weight: 600;
 	letter-spacing: 2rpx;
-	text-shadow: 0 2rpx 8rpx rgba(13, 71, 161, 0.18);
+	text-shadow: 0 2rpx 8rpx rgba(150, 20, 15, 0.2);
 	transition: transform 0.2s ease;
 }
 

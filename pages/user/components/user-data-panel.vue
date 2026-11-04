@@ -28,10 +28,10 @@ export default {
 	margin-top: 30rpx;
 	position: relative;
 	overflow: hidden;
-	background: linear-gradient(145deg, #ffffff 0%, #f8f3ff 52%, #f0faff 100%);
+	background: #ffffff;
 	border-radius: 32rpx;
 	padding: 22rpx;
-	box-shadow: 0 20rpx 48rpx rgba(105, 62, 255, 0.13);
+	box-shadow: 0 12rpx 32rpx rgba(0, 0, 0, 0.05);
 	border: 2rpx solid rgba(255, 255, 255, 0.9);
 }
 
@@ -43,7 +43,7 @@ export default {
 	width: 160rpx;
 	height: 160rpx;
 	border-radius: 50%;
-	background: radial-gradient(circle, rgba(125, 95, 255, 0.18) 0%, rgba(125, 95, 255, 0) 70%);
+	background: radial-gradient(circle, rgba(255, 59, 48, 0.1) 0%, rgba(255, 59, 48, 0) 70%);
 	pointer-events: none;
 }
 
@@ -64,11 +64,11 @@ export default {
 .dataNumber {
 	font-size: 32rpx;
 	font-weight: 700;
-	color: #1b1732;
+	color: #1a1a1a;
 }
 
 .dataLabel {
 	font-size: 24rpx;
-	color: #6c6392;
+	color: #8c8c8c;
 }
 </style>

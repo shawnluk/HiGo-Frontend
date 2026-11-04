@@ -1,33 +1,38 @@
 <template>
 	<view>
-		<PageScaffold :tab-index="3" :show-bottom-tab-bar="!showCropper">
+		<PageScaffold :tab-index="4" :show-bottom-tab-bar="!showCropper">
 			<view class="userList">
-				<UserHeaderPanel
-					:avatar-url="avatarUrl"
-					:display-name="displayName"
-					:is-logged-in="isLoggedIn"
-					:partner-id="header.partnerId"
-					:partner-id-tag="header.partnerIdTag"
-					:badges="header.badges"
-					:member-title="header.memberTitle"
-					:member-desc="header.memberDesc"
-					:member-link="header.memberLink"
-					@avatar-click="handleCrop"
-					@username-click="onUsernameClick"
-				/>
-				<!-- <UserStatsPanel
-					:stats="statsItems"
-					:star-value="starValue"
-				/> -->
-				<UserDataPanel :items="dataItems" />
-				<UserServiceEntryPanel />
-				<UserSquadPanel :items="squadItems" @toggle-pin="onTogglePin" />
+				<!-- 顶部区域 + 快捷入口合成一组，二者无间隙相接 -->
+				<view class="userTop">
+					<UserHeaderPanel
+						:avatar-url="avatarUrl"
+						:display-name="displayName"
+						:is-logged-in="isLoggedIn"
+						:partner-id="header.partnerId"
+						:partner-id-tag="header.partnerIdTag"
+						:badges="header.badges"
+						:member-title="header.memberTitle"
+						:member-desc="header.memberDesc"
+						:member-link="header.memberLink"
+						@avatar-click="handleCrop"
+						@username-click="onUsernameClick"
+					/>
+					<!-- <UserStatsPanel
+						:stats="statsItems"
+						:star-value="starValue"
+					/> -->
+					<UserQuickEntryPanel />
+				</view>
+				<!-- <UserDataPanel :items="dataItems" /> -->
+				<!-- <UserServiceEntryPanel /> -->
+				<UserSquadPanel :items="squadItems" />
+				<UserListCard :items="contentList" />
+				<UserListCard :items="accountList" />
 				<view v-if="isLoggedIn" class="logoutCard" @tap="handleLogout">
 					<text class="logoutText">退出登录</text>
 				</view>
 			</view>
 		</PageScaffold>
-		<UserPublishButton :isBubbling="isBubbling" @click="createActivity" />
 
 		<QfImageCropper
 			v-if="showCropper"
@@ -47,11 +52,14 @@
 <script>
 import PageScaffold from '@/components/page-scaffold.vue'
 import UserHeaderPanel from './components/user-header-panel.vue'
-import UserStatsPanel from './components/user-stats-panel.vue'
-import UserServiceEntryPanel from './components/user-service-entry-panel.vue'
-import UserDataPanel from './components/user-data-panel.vue'
+// import UserStatsPanel from './components/user-stats-panel.vue'
+import UserQuickEntryPanel from './components/user-quick-entry-panel.vue'
+// import UserServiceEntryPanel from './components/user-service-entry-panel.vue'
+// import UserDataPanel from './components/user-data-panel.vue'
 import UserSquadPanel from './components/user-squad-panel.vue'
-import UserPublishButton from './components/user-publish-button.vue'
+import UserListCard from './components/user-list-card.vue'
+// 发布按钮已迁移到 tabbar 中，保留组件文件以备后续使用
+// import UserPublishButton from './components/user-publish-button.vue'
 import QfImageCropper from '@/uni_modules/qf-image-cropper/components/qf-image-cropper/qf-image-cropper.vue'
 import {
 	MOCK_USER_DEFAULT_AVATAR,
@@ -59,6 +67,8 @@ import {
 	MOCK_USER_DISPLAY_NAME_LOGGED_IN,
 	MOCK_USER_HEADER,
 	MOCK_USER_DATA_ITEMS,
+	MOCK_USER_CONTENT_LIST,
+	MOCK_USER_ACCOUNT_LIST,
 } from '@/mock/user-display.js'
 import {
 	fetchUserProfile,
@@ -70,11 +80,12 @@ export default {
 	components: {
 		PageScaffold,
 		UserHeaderPanel,
-		UserStatsPanel,
-		UserServiceEntryPanel,
-		UserDataPanel,
+		// UserStatsPanel,
+		UserQuickEntryPanel,
+		// UserServiceEntryPanel,
+		// UserDataPanel,
 		UserSquadPanel,
-		UserPublishButton,
+		UserListCard,
 		QfImageCropper
 	},
 	data() {
@@ -84,6 +95,8 @@ export default {
 			displayNameLoggedIn: MOCK_USER_DISPLAY_NAME_LOGGED_IN,
 			header: { ...MOCK_USER_HEADER },
 			dataItems: MOCK_USER_DATA_ITEMS.map((row) => ({ ...row })),
+			contentList: MOCK_USER_CONTENT_LIST.map((row) => ({ ...row })),
+			accountList: MOCK_USER_ACCOUNT_LIST.map((row) => ({ ...row })),
 			squadItems: [],
 			showCropper: false,
 			cropperImg: '',
@@ -92,9 +105,6 @@ export default {
 			userId: '',
 			user_no: '',
 			squads: [],
-			isBubbling: false,
-			isNavigating: false,
-			bubbleTimer: null,
 		};
 	},
 
@@ -291,60 +301,20 @@ export default {
 			this.showCropper = false
 			this.cropperImg = ''
 			this.cropCanceled = false
-		},
-
-		/** 发布活动：播放冒泡动画后跳转创建活动页 */
-		createActivity() {
-			// 入口先校验登录态：未登录提示用户选择去登录或取消
-			if (!this.isLoggedIn) {
-				uni.showModal({
-					title: '提示',
-					content: '请先登录后再发布活动',
-					confirmText: '去登录',
-					cancelText: '取消',
-					success: (res) => {
-						if (res.confirm) {
-							uni.navigateTo({ url: '/src/login/login' })
-						}
-					},
-				})
-				return
-			}
-			if (this.isNavigating) return
-
-			this.isNavigating = true
-			this.isBubbling = false
-
-			if (this.bubbleTimer) {
-				clearTimeout(this.bubbleTimer)
-			}
-
-			this.$nextTick(() => {
-				this.isBubbling = true
-			})
-
-			this.bubbleTimer = setTimeout(() => {
-				uni.redirectTo({
-					url: '/src/create-activity/create-activity',
-					fail: () => {
-						this.isNavigating = false
-						this.isBubbling = false
-					},
-				})
-			}, 3000)
 		}
-	},
-	/** 页面销毁：清理气泡定时器，避免内存泄漏 */
-	beforeDestroy() {
-		if (this.bubbleTimer) {
-			clearTimeout(this.bubbleTimer)
-		}
+
+		/** 发布活动已迁移到 tabbar（见 components/bottom-tab-bar.vue 的 onPublish） */
 	},
 }
 </script>
 
 <style>
-/* 与首页 activityList 一致，底部多留一截给悬浮「发布」 */
+/* 个人页底色 / 卡片配色对齐设计稿「我的」：浅灰底 + 白卡片 + 红色点缀 */
+page {
+	background-color: #f5f5f6;
+}
+
+/* 与首页 activityList 一致，底部多留一截给自定义底栏 */
 .userList {
 	display: flex;
 	flex-direction: column;
@@ -353,21 +323,30 @@ export default {
 	padding-bottom: calc(260rpx + env(safe-area-inset-bottom));
 }
 
+/* 顶部红色卡片与快捷入口之间不留间距，避免负 margin 造成圆角被遮挡；
+   红色区域铺满左右与顶部，故反向抵消 .userList 的左右/上内边距 */
+.userTop {
+	display: flex;
+	flex-direction: column;
+	gap: 0;
+	margin: -10rpx -24rpx 0;
+}
+
 .logoutCard {
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	height: 100rpx;
 	border-radius: 32rpx;
-	background: linear-gradient(145deg, #ffffff 0%, #fff1f3 100%);
-	box-shadow: 0 20rpx 48rpx rgba(255, 95, 120, 0.1);
+	background: #ffffff;
+	box-shadow: 0 12rpx 32rpx rgba(0, 0, 0, 0.05);
 	border: 2rpx solid rgba(255, 255, 255, 0.9);
 }
 
 .logoutText {
 	font-size: 30rpx;
 	font-weight: 600;
-	color: #e54d42;
+	color: #ff3b30;
 	letter-spacing: 4rpx;
 }
 
