@@ -41,6 +41,7 @@
 			}
 		},
 		{"path": "src/activity-detail/activity-detail"},
+		{"path": "src/activity-enroll/activity-enroll"},
 		{
 			"path": "src/itinerary/itinerary",
 			"style": {

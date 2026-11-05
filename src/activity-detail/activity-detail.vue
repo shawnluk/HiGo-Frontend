@@ -67,17 +67,37 @@
 				<view class="joinHead">
 					<text class="joinTitle">已报名 {{ detail.joinCount }} 人</text>
 				</view>
-				<scroll-view scroll-x class="avaScroll" :show-scrollbar="false">
-					<view class="avaRow">
-						<image
-							v-for="(ava, idx) in joinList"
-							:key="idx"
-							class="joinAva"
-							:src="ava"
-							mode="aspectFill"
-						/>
+				<view class="avaWrap">
+					<scroll-view
+						scroll-x
+						class="avaScroll"
+						:show-scrollbar="false"
+						:scroll-left="avatarScrollLeft"
+						@scroll="onAvatarScroll"
+					>
+						<view class="avaRow">
+							<image
+								v-for="(ava, idx) in joinList"
+								:key="idx"
+								class="joinAva"
+								:src="ava"
+								mode="aspectFill"
+							/>
+						</view>
+					</scroll-view>
+					<!-- 超过 6 个时展示可拖动的横向滚动条 -->
+					<view v-if="canScrollAvatars" class="avaBar">
+						<view
+							class="avaBarThumb"
+							:style="{ width: thumbWidthPx + 'px', transform: `translateX(${thumbOffsetPx}px)` }"
+							@touchstart.stop="onThumbTouchStart"
+							@touchmove.stop.prevent="onThumbTouchMove"
+							@touchend.stop="onThumbTouchEnd"
+							@touchcancel.stop="onThumbTouchEnd"
+							@mousedown.stop="onThumbMouseDown"
+						></view>
 					</view>
-				</scroll-view>
+				</view>
 
 				<view class="sectionHead">
 					<text class="sectionTitle">活动说明</text>
@@ -101,7 +121,7 @@
 </template>
 
 <script setup>
-import { computed, reactive } from 'vue'
+import { computed, onBeforeUnmount, reactive, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { fetchActivityDetail, reportActivityView } from '@/api/modules/activity.js'
 import { updateCachedActivityHot } from '@/utils/activity-cache.js'
@@ -113,11 +133,16 @@ const actDetail = reactive({
 /** 归一化活动数据，补齐默认字段并兼容不同的字段命名 */
 function normalizeActivity(raw) {
 	if (!raw || typeof raw !== 'object') return {}
+	const members = Array.isArray(raw.members) ? raw.members : []
+	const memberAvatars = members
+		.map((m) => (typeof m === 'string' ? m : m && (m.avatar || m.avatar_url)))
+		.filter(Boolean)
 	const joinAvatars = Array.isArray(raw.joinAvatars)
 		? raw.joinAvatars
 		: Array.isArray(raw.join_avatars)
 			? raw.join_avatars
 			: []
+	const avatars = memberAvatars.length ? memberAvatars : joinAvatars
 	return {
 		...raw,
 		cover: raw.cover || '',
@@ -126,9 +151,14 @@ function normalizeActivity(raw) {
 		time_text: raw.time_text || '',
 		squad_avatar: raw.squad_avatar || '',
 		squad_name: raw.squad_name || '',
-		joinCount: Number(raw.joinCount) || joinAvatars.length || 0,
+		joinCount:
+			members.length ||
+			Number(raw.member_count != null ? raw.member_count : raw.memberCount) ||
+			Number(raw.joinCount) ||
+			avatars.length ||
+			0,
 		hot: Number(raw.hot != null ? raw.hot : raw.heat) || 0,
-		joinAvatars,
+		joinAvatars: avatars,
 		category_name: raw.category_name || '',
 		description: raw.description || '',
 		fee_note: raw.fee_note || '',
@@ -153,6 +183,102 @@ const detail = computed(() => actDetail.data)
 const joinList = computed(() => {
 	const list = detail.value.joinAvatars || []
 	return list.length ? list : []
+})
+
+/* ===== 头像横向滚动条（超过 6 个时可拖动） ===== */
+const AVATAR_SIZE_RPX = 80
+const AVATAR_GAP_RPX = 16
+const AVATAR_VIEW_RPX = 560
+
+/** rpx → px 换算比例，用于计算滚动条滑块宽度与位置 */
+function getRpxRatio() {
+	try {
+		return (uni.getSystemInfoSync().windowWidth || 375) / 750
+	} catch {
+		return 0.5
+	}
+}
+const rpxRatio = getRpxRatio()
+const viewWidthPx = AVATAR_VIEW_RPX * rpxRatio
+
+const avatarScrollLeft = ref(0)
+const draggable = ref(false)
+const dragStartX = ref(0)
+const dragStartScrollLeft = ref(0)
+
+const contentWidthPx = computed(() => {
+	const n = joinList.value.length
+	if (!n) return 0
+	return (n * AVATAR_SIZE_RPX + (n - 1) * AVATAR_GAP_RPX) * rpxRatio
+})
+const canScrollAvatars = computed(() => contentWidthPx.value > viewWidthPx)
+const maxScrollPx = computed(() => Math.max(contentWidthPx.value - viewWidthPx, 0))
+const thumbWidthPx = computed(() => {
+	if (!canScrollAvatars.value) return viewWidthPx
+	// 滑块宽度与可视/内容宽度比例一致，最小保留 24px 便于拖动
+	return Math.max((viewWidthPx * viewWidthPx) / contentWidthPx.value, 24)
+})
+const thumbMaxOffsetPx = computed(() => Math.max(viewWidthPx - thumbWidthPx.value, 0))
+const thumbOffsetPx = computed(() => {
+	if (!maxScrollPx.value || !thumbMaxOffsetPx.value) return 0
+	const ratio = Math.min(Math.max(avatarScrollLeft.value / maxScrollPx.value, 0), 1)
+	return ratio * thumbMaxOffsetPx.value
+})
+
+function onAvatarScroll(e) {
+	const x = e && e.detail ? Number(e.detail.scrollLeft) : NaN
+	if (!Number.isNaN(x)) avatarScrollLeft.value = x
+}
+
+function startThumbDrag(clientX) {
+	draggable.value = true
+	dragStartX.value = clientX
+	dragStartScrollLeft.value = avatarScrollLeft.value
+}
+
+function moveThumbDrag(clientX) {
+	if (!draggable.value || !thumbMaxOffsetPx.value) return
+	const dx = clientX - dragStartX.value
+	const next = dragStartScrollLeft.value + (dx / thumbMaxOffsetPx.value) * maxScrollPx.value
+	avatarScrollLeft.value = Math.min(Math.max(next, 0), maxScrollPx.value)
+}
+
+function endThumbDrag() {
+	draggable.value = false
+}
+
+function onThumbTouchStart(e) {
+	const x = e && e.touches && e.touches[0] ? e.touches[0].clientX : 0
+	startThumbDrag(x)
+}
+
+function onThumbTouchMove(e) {
+	const x = e && e.touches && e.touches[0] ? e.touches[0].clientX : 0
+	moveThumbDrag(x)
+}
+
+function onThumbTouchEnd() {
+	endThumbDrag()
+}
+
+/** H5 桌面端鼠标拖拽支持 */
+let removeMouseListeners = null
+function onThumbMouseDown(e) {
+	startThumbDrag(e.clientX)
+	const onMove = (ev) => moveThumbDrag(ev.clientX)
+	const onUp = () => {
+		endThumbDrag()
+		window.removeEventListener('mousemove', onMove)
+		window.removeEventListener('mouseup', onUp)
+		removeMouseListeners = null
+	}
+	window.addEventListener('mousemove', onMove)
+	window.addEventListener('mouseup', onUp)
+	removeMouseListeners = onUp
+}
+
+onBeforeUnmount(() => {
+	if (removeMouseListeners) removeMouseListeners()
 })
 
 const tagLabel = computed(() => detail.value.category_name || '')
@@ -217,7 +343,7 @@ onLoad((option) => {
 async function loadActivityDetail(activityId) {
 	try {
 		const data = await fetchActivityDetail(activityId)
-		console.log('[HiGo] activityDetail =>', JSON.stringify(data, null, 2))
+		console.log(`[HiGo] 活动详情-返回数据（activity_id=${activityId}）=>`, data)
 		if (data && data.activity_id != null) {
 			actDetail.data = normalizeActivity(data)
 			// 成功展示详情即上报一次热度（去重由后端保证，重复进入不会虚增），
@@ -262,9 +388,32 @@ const onFavorite = () => {
 	uni.showToast({ title: '收藏功能开发中', icon: 'none' })
 }
 
-/** 报名入口：提示报名流程即将接入 */
+/** 报名入口：未登录先拦截登录，已登录进入报名确认页（仅传 activity_id） */
 const onRegister = () => {
-	uni.showToast({ title: '报名流程即将接入', icon: 'none' })
+	let token = ''
+	try {
+		token = uni.getStorageSync('token')
+	} catch (_) {}
+	if (!token) {
+		uni.showModal({
+			title: '需要登录',
+			content: '登录后即可报名活动',
+			confirmText: '去登录',
+			cancelText: '取消',
+			success: (res) => {
+				if (res.confirm) uni.navigateTo({ url: '/src/login/login' })
+			},
+		})
+		return
+	}
+	const activityId = detail.value.activity_id
+	if (!activityId) {
+		uni.showToast({ title: '缺少活动编号', icon: 'none' })
+		return
+	}
+	uni.navigateTo({
+		url: `/src/activity-enroll/activity-enroll?activity_id=${encodeURIComponent(activityId)}`,
+	})
 }
 
 /** 分享入口：提示分享能力即将接入 */
@@ -563,10 +712,31 @@ const onShare = () => {
 	color: var(--title-color);
 }
 
-.avaScroll {
-	width: 100%;
+/* 头像可视区固定为 6 个宽度（6×80rpx + 5×16rpx 间距） */
+.avaWrap {
+	width: 560rpx;
 	margin-bottom: 36rpx;
+}
+
+.avaScroll {
+	width: 560rpx;
 	white-space: nowrap;
+}
+
+/* 可左右拖动的横向滚动条，跟随页面红橙主题配色 */
+.avaBar {
+	width: 560rpx;
+	height: 8rpx;
+	margin-top: 12rpx;
+	background: rgba(255, 59, 48, 0.08);
+	border-radius: 8rpx;
+	overflow: hidden;
+}
+
+.avaBarThumb {
+	height: 8rpx;
+	border-radius: 8rpx;
+	background: linear-gradient(90deg, #ff7a45 0%, #ff3b30 100%);
 }
 
 .avaRow {
@@ -582,6 +752,7 @@ const onShare = () => {
 	border-radius: 50%;
 	border: 3rpx solid #ffffff;
 	box-shadow: 0 3rpx 10rpx rgba(0, 0, 0, 0.12);
+	box-sizing: border-box;
 	flex-shrink: 0;
 	background: #eee;
 }
