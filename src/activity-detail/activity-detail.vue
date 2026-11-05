@@ -1,32 +1,24 @@
 <template>
 	<view class="page">
-		<!-- 顶部导航 -->
+		<!-- 顶部导航：左侧返回 / 中间标题 / 右侧收藏 -->
 		<view class="navBar" :style="{ paddingTop: statusBarPadding }">
 			<view
-				class="navBack"
-				hover-class="navBack--pressed"
+				class="navRoundBtn"
+				hover-class="navRoundBtn--pressed"
 				hover-stay-time="120"
-				@click="goHome"
+				@click="goBack"
 			>
-				<!-- 动态渐变描边：旋转色环 -->
-				<view class="navBackClip">
-					<view class="navBackSpin"></view>
-				</view>
-				<view class="navBackFace">
-					<view class="navBackShine" aria-hidden="true"></view>
-					<view class="navBackParticle navBackParticle--1" aria-hidden="true"></view>
-					<view class="navBackParticle navBackParticle--2" aria-hidden="true"></view>
-					<view class="navBackParticle navBackParticle--3" aria-hidden="true"></view>
-					<view class="navBackParticle navBackParticle--4" aria-hidden="true"></view>
-					<text class="navBackChevron">‹</text>
-				</view>
-				<!-- 外侧漂浮粒子 -->
-				<view class="navBackOrb navBackOrb--1" aria-hidden="true"></view>
-				<view class="navBackOrb navBackOrb--2" aria-hidden="true"></view>
-				<view class="navBackOrb navBackOrb--3" aria-hidden="true"></view>
+				<uni-icons type="left" size="18" color="#1f1f1f"></uni-icons>
 			</view>
 			<text class="navTitle">活动详情</text>
-			<view class="navRight"></view>
+			<view
+				class="navRoundBtn"
+				hover-class="navRoundBtn--pressed"
+				hover-stay-time="120"
+				@click="onFavorite"
+			>
+				<uni-icons type="heart" size="18" color="#1f1f1f"></uni-icons>
+			</view>
 		</view>
 
 		<scroll-view scroll-y class="scrollBody" :show-scrollbar="false">
@@ -191,9 +183,10 @@ const statusBarPadding = computed(() => {
 	try {
 		const sys = uni.getSystemInfoSync()
 		const h = sys.statusBarHeight || 0
-		return `${h}px`
+		// 状态栏高度之外再留 8px 顶边距，避免返回/收藏按钮贴住顶部
+		return `${h + 8}px`
 	} catch {
-		return '0px'
+		return '16rpx'
 	}
 })
 
@@ -238,9 +231,35 @@ async function loadActivityDetail(activityId) {
 	uni.showToast({ title: '活动信息加载失败', icon: 'none' })
 }
 
-/** 返回首页 */
-const goHome = () => {
+/** 返回上一页：无页面栈时兜底回首页 */
+const goBack = () => {
+	const pages = getCurrentPages()
+	if (pages && pages.length > 1) {
+		uni.navigateBack()
+		return
+	}
 	uni.redirectTo({ url: '/pages/index/index' })
+}
+
+/** 收藏：未登录先拦截登录，已登录暂只提示（收藏接口待接入） */
+const onFavorite = () => {
+	let token = ''
+	try {
+		token = uni.getStorageSync('token')
+	} catch (_) {}
+	if (!token) {
+		uni.showModal({
+			title: '需要登录',
+			content: '登录后即可收藏活动',
+			confirmText: '去登录',
+			cancelText: '取消',
+			success: (res) => {
+				if (res.confirm) uni.navigateTo({ url: '/src/login/login' })
+			},
+		})
+		return
+	}
+	uni.showToast({ title: '收藏功能开发中', icon: 'none' })
 }
 
 /** 报名入口：提示报名流程即将接入 */
@@ -258,24 +277,25 @@ const onShare = () => {
 .page {
 	display: flex;
 	flex-direction: column;
-	--card-bg: linear-gradient(145deg, #ffffff 0%, #f8f3ff 52%, #f0faff 100%);
-	--title-color: #1b1732;
-	--tag-bg: linear-gradient(90deg, #7d5fff 0%, #ff5fb3 100%);
-	--time-pill-bg: linear-gradient(90deg, rgba(125, 95, 255, 0.13) 0%, rgba(255, 95, 179, 0.12) 100%);
-	--time-pill-border: rgba(125, 95, 255, 0.26);
-	--time-pill-label: #7b65d9;
-	--time-pill-text: #4a3f7d;
-	--loc-pill-bg: linear-gradient(90deg, rgba(95, 190, 255, 0.12) 0%, rgba(95, 152, 255, 0.1) 100%);
-	--loc-pill-border: rgba(95, 152, 255, 0.26);
-	--loc-label: #4f82d8;
-	--loc-text: #3f5f93;
-	--muted: #6c6392;
-	--accent: #5d37ff;
+	--card-bg: #f6f6f7;
+	--title-color: #1f1f1f;
+	--tag-bg: linear-gradient(90deg, #ff7a45 0%, #ff3b30 100%);
+	--time-pill-bg: #fff7f3;
+	--time-pill-border: rgba(255, 106, 61, 0.16);
+	--time-pill-label: #ff6a3d;
+	--time-pill-text: #3a3a3a;
+	--loc-pill-bg: #fff7f3;
+	--loc-pill-border: rgba(255, 106, 61, 0.16);
+	--loc-label: #ff6a3d;
+	--loc-text: #3a3a3a;
+	--muted: #999999;
+	--accent: #ff3b30;
 	min-height: 100vh;
 	background: var(--card-bg);
 	box-sizing: border-box;
 }
 
+/* 常规顶栏：返回 / 标题 / 收藏 */
 .navBar {
 	display: flex;
 	align-items: center;
@@ -284,261 +304,32 @@ const onShare = () => {
 	position: sticky;
 	top: 0;
 	z-index: 20;
-	background: rgba(255, 255, 255, 0.86);
-	backdrop-filter: blur(12rpx);
-	border-bottom: 1rpx solid rgba(125, 95, 255, 0.12);
+	background: #ffffff;
+	border-bottom: 1rpx solid rgba(0, 0, 0, 0.06);
+	box-sizing: border-box;
 }
 
-/* 二次元返回键：旋转糖果描边 + 星屑粒子 + 外侧光点 */
-.navBack {
-	position: relative;
-	width: 96rpx;
-	height: 96rpx;
-	overflow: visible;
-	transition: transform 0.15s ease, opacity 0.15s ease;
-	filter: drop-shadow(0 12rpx 28rpx rgba(125, 95, 255, 0.38));
-}
-
-.navBackClip {
-	position: absolute;
-	left: 0;
-	top: 0;
-	width: 96rpx;
-	height: 96rpx;
-	border-radius: 32rpx;
-	overflow: hidden;
-	z-index: 0;
-	box-shadow: inset 0 0 0 1rpx rgba(255, 255, 255, 0.35);
-}
-
-.navBackSpin {
-	position: absolute;
-	width: 240%;
-	height: 240%;
-	left: -70%;
-	top: -70%;
-	background: linear-gradient(
-		140deg,
-		#ffb8ec 0%,
-		#c4b5ff 18%,
-		#8cebff 38%,
-		#fff4b8 58%,
-		#ffb8ec 78%,
-		#dda9ff 100%
-	);
-	animation: navEdgeRotate 2.6s linear infinite;
-}
-
-.navBackFace {
-	position: absolute;
-	left: 7rpx;
-	top: 7rpx;
-	right: 7rpx;
-	bottom: 7rpx;
-	border-radius: 26rpx;
-	background: linear-gradient(155deg, #7a63ff 0%, #c06dff 42%, #ff5aad 100%);
-	box-shadow:
-		inset 0 3rpx 0 rgba(255, 255, 255, 0.42),
-		inset 0 -8rpx 20rpx rgba(120, 60, 160, 0.18);
+.navRoundBtn {
+	width: 72rpx;
+	height: 72rpx;
+	border-radius: 50%;
+	background: #f3f3f5;
+	border: 1rpx solid rgba(0, 0, 0, 0.06);
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	overflow: hidden;
-	z-index: 2;
+	transition: transform 0.15s ease, opacity 0.15s ease;
 }
 
-.navBackShine {
-	position: absolute;
-	top: -42%;
-	left: -28%;
-	width: 78%;
-	height: 140%;
-	border-radius: 50%;
-	background: linear-gradient(
-		125deg,
-		rgba(255, 255, 255, 0.58) 0%,
-		rgba(255, 255, 255, 0.14) 42%,
-		rgba(255, 255, 255, 0) 70%
-	);
-	pointer-events: none;
-	z-index: 0;
-}
-
-.navBackParticle {
-	position: absolute;
-	pointer-events: none;
-	z-index: 3;
-}
-
-/* 菱形星屑 · 闪烁节奏错落 */
-.navBackParticle--1 {
-	width: 11rpx;
-	height: 11rpx;
-	top: 16rpx;
-	left: 20rpx;
-	border-radius: 2rpx;
-	background: linear-gradient(135deg, #ffffff 0%, #fef08a 100%);
-	transform: rotate(45deg);
-	animation: navSparkTwinkle 1.35s ease-in-out infinite;
-	box-shadow: 0 0 10rpx rgba(255, 240, 180, 0.95);
-}
-
-.navBackParticle--2 {
-	width: 8rpx;
-	height: 8rpx;
-	bottom: 22rpx;
-	right: 24rpx;
-	border-radius: 50%;
-	background: radial-gradient(circle at 35% 35%, #ffffff 0%, #67e8f9 70%);
-	animation: navSparkTwinkleRound 1.1s ease-in-out 0.35s infinite;
-	box-shadow: 0 0 12rpx rgba(103, 232, 249, 0.9);
-}
-
-.navBackParticle--3 {
-	width: 9rpx;
-	height: 9rpx;
-	top: 26rpx;
-	right: 18rpx;
-	border-radius: 1rpx;
-	background: linear-gradient(145deg, #fce7f3, #fda4ff);
-	transform: rotate(45deg) scale(0.95);
-	animation: navSparkTwinkle 1.55s ease-in-out 0.2s infinite;
-	opacity: 0.92;
-}
-
-.navBackParticle--4 {
-	width: 6rpx;
-	height: 6rpx;
-	bottom: 30rpx;
-	left: 22rpx;
-	border-radius: 50%;
-	background: #fff;
-	animation: navSparkTwinkleRound 1.05s ease-in-out 0.55s infinite;
-	box-shadow: 0 0 8rpx rgba(255, 255, 255, 0.95);
-}
-
-.navBackChevron {
-	position: relative;
-	z-index: 4;
-	font-size: 56rpx;
-	font-weight: 200;
-	color: #ffffff;
-	line-height: 1;
-	margin-left: -10rpx;
-	margin-top: -4rpx;
-	text-shadow:
-		0 0 18rpx rgba(255, 182, 255, 0.65),
-		0 4rpx 12rpx rgba(60, 30, 100, 0.4);
-}
-
-.navBackOrb {
-	position: absolute;
-	pointer-events: none;
-	z-index: 5;
-	border-radius: 50%;
-}
-
-.navBackOrb--1 {
-	width: 16rpx;
-	height: 16rpx;
-	top: -8rpx;
-	right: -6rpx;
-	background: radial-gradient(circle at 30% 30%, #ffffff 0%, #a5f3fc 55%, #38bdf8 100%);
-	box-shadow:
-		0 0 18rpx rgba(165, 243, 252, 1),
-		0 0 6rpx rgba(56, 189, 248, 0.8);
-	animation: navOrbDrift 2.4s ease-in-out infinite;
-}
-
-.navBackOrb--2 {
-	width: 11rpx;
-	height: 11rpx;
-	bottom: -2rpx;
-	left: -10rpx;
-	background: radial-gradient(circle at 40% 40%, #fff 0%, #f9a8d4 65%, #ec4899 100%);
-	box-shadow: 0 0 14rpx rgba(249, 168, 212, 0.95);
-	animation: navOrbDrift 2s ease-in-out 0.5s infinite reverse;
-}
-
-.navBackOrb--3 {
-	width: 9rpx;
-	height: 9rpx;
-	top: 40%;
-	left: -14rpx;
-	margin-top: -5rpx;
-	background: radial-gradient(circle, #fef9c3 0%, #fde047 50%, #facc15 100%);
-	opacity: 0.95;
-	animation: navOrbDrift 1.8s ease-in-out 0.25s infinite;
-	box-shadow: 0 0 12rpx rgba(253, 224, 71, 0.85);
-}
-
-.navBack--pressed {
-	transform: scale(0.93);
-	opacity: 0.88;
-}
-
-@keyframes navEdgeRotate {
-	from {
-		transform: rotate(0deg);
-	}
-	to {
-		transform: rotate(360deg);
-	}
-}
-
-@keyframes navSparkTwinkle {
-	0%,
-	100% {
-		opacity: 0.45;
-		transform: rotate(45deg) scale(0.82);
-	}
-	40% {
-		opacity: 1;
-		transform: rotate(45deg) scale(1.12);
-	}
-	70% {
-		opacity: 0.75;
-		transform: rotate(45deg) scale(0.95);
-	}
-}
-
-@keyframes navSparkTwinkleRound {
-	0%,
-	100% {
-		opacity: 0.4;
-		transform: scale(0.78);
-	}
-	45% {
-		opacity: 1;
-		transform: scale(1.18);
-	}
-}
-
-@keyframes navOrbDrift {
-	0%,
-	100% {
-		transform: translate(0, 0) scale(1);
-		opacity: 0.85;
-	}
-	35% {
-		transform: translate(4rpx, -8rpx) scale(1.15);
-		opacity: 1;
-	}
-	70% {
-		transform: translate(-3rpx, 5rpx) scale(0.92);
-		opacity: 0.75;
-	}
+.navRoundBtn--pressed {
+	transform: scale(0.94);
+	opacity: 0.82;
 }
 
 .navTitle {
 	font-size: 32rpx;
 	font-weight: 700;
 	color: var(--title-color);
-}
-
-.navRight {
-	width: 96rpx;
-	height: 96rpx;
 }
 
 .scrollBody {
@@ -553,7 +344,7 @@ const onShare = () => {
 	height: 420rpx;
 	border-radius: 32rpx;
 	overflow: hidden;
-	box-shadow: 0 20rpx 48rpx rgba(105, 62, 255, 0.13);
+	box-shadow: 0 20rpx 48rpx rgba(0, 0, 0, 0.1);
 }
 
 .heroImg {
@@ -568,7 +359,7 @@ const onShare = () => {
 	right: 0;
 	bottom: 0;
 	height: 220rpx;
-	background: linear-gradient(to top, rgba(10, 7, 30, 0.75), rgba(10, 7, 30, 0));
+	background: linear-gradient(to top, rgba(20, 10, 10, 0.75), rgba(20, 10, 10, 0));
 }
 
 .heroChip {
@@ -609,7 +400,7 @@ const onShare = () => {
 	font-weight: 600;
 	color: #ffffff;
 	background: var(--tag-bg);
-	box-shadow: 0 8rpx 18rpx rgba(125, 95, 255, 0.28);
+	box-shadow: 0 8rpx 18rpx rgba(255, 59, 48, 0.28);
 	line-height: 44rpx;
 }
 
@@ -632,31 +423,31 @@ const onShare = () => {
 	display: block;
 	font-size: 26rpx;
 	font-weight: 600;
-	color: #c45a1a;
+	color: #ff5a1f;
 	margin-bottom: 20rpx;
 }
 
 .feeCard {
-	background: rgba(255, 255, 255, 0.72);
-	border: 1rpx solid rgba(255, 255, 255, 0.9);
+	background: #ffffff;
+	border: 1rpx solid rgba(0, 0, 0, 0.05);
 	border-radius: 24rpx;
 	padding: 22rpx 24rpx;
 	margin-bottom: 20rpx;
-	box-shadow: 0 12rpx 32rpx rgba(105, 62, 255, 0.08);
+	box-shadow: 0 12rpx 32rpx rgba(0, 0, 0, 0.05);
 }
 
 .feeLabel {
 	display: block;
 	font-size: 22rpx;
 	font-weight: 600;
-	color: var(--time-pill-label);
+	color: var(--muted);
 	margin-bottom: 8rpx;
 }
 
 .feeValue {
 	font-size: 28rpx;
 	font-weight: 600;
-	color: var(--title-color);
+	color: var(--accent);
 	line-height: 40rpx;
 }
 
@@ -675,13 +466,13 @@ const onShare = () => {
 .timePill {
 	background: var(--time-pill-bg);
 	border: 1rpx solid var(--time-pill-border);
-	box-shadow: 0 8rpx 20rpx rgba(125, 95, 255, 0.12);
+	box-shadow: 0 8rpx 20rpx rgba(255, 106, 61, 0.08);
 }
 
 .locationPill {
 	background: var(--loc-pill-bg);
 	border: 1rpx solid var(--loc-pill-border);
-	box-shadow: 0 8rpx 20rpx rgba(95, 152, 255, 0.1);
+	box-shadow: 0 8rpx 20rpx rgba(255, 106, 61, 0.08);
 }
 
 .timePillIco,
@@ -728,11 +519,11 @@ const onShare = () => {
 	align-items: center;
 	gap: 18rpx;
 	padding: 22rpx 24rpx;
-	background: rgba(255, 255, 255, 0.78);
+	background: #ffffff;
 	border-radius: 24rpx;
-	border: 1rpx solid rgba(255, 255, 255, 0.95);
+	border: 1rpx solid rgba(0, 0, 0, 0.05);
 	margin-bottom: 28rpx;
-	box-shadow: 0 12rpx 28rpx rgba(50, 40, 90, 0.06);
+	box-shadow: 0 12rpx 28rpx rgba(0, 0, 0, 0.05);
 }
 
 .orgAva {
@@ -790,7 +581,7 @@ const onShare = () => {
 	height: 80rpx;
 	border-radius: 50%;
 	border: 3rpx solid #ffffff;
-	box-shadow: 0 3rpx 10rpx rgba(50, 40, 90, 0.12);
+	box-shadow: 0 3rpx 10rpx rgba(0, 0, 0, 0.12);
 	flex-shrink: 0;
 	background: #eee;
 }
@@ -806,10 +597,10 @@ const onShare = () => {
 }
 
 .detailBody {
-	background: rgba(255, 255, 255, 0.72);
+	background: #ffffff;
 	border-radius: 24rpx;
 	padding: 24rpx 26rpx;
-	border: 1rpx solid rgba(255, 255, 255, 0.9);
+	border: 1rpx solid rgba(0, 0, 0, 0.05);
 	margin-bottom: 24rpx;
 }
 
@@ -817,7 +608,7 @@ const onShare = () => {
 	display: block;
 	font-size: 28rpx;
 	line-height: 44rpx;
-	color: #4a4570;
+	color: #4a4a4a;
 	margin-bottom: 18rpx;
 }
 
@@ -826,10 +617,10 @@ const onShare = () => {
 }
 
 .hintCard {
-	background: linear-gradient(90deg, rgba(125, 95, 255, 0.08) 0%, rgba(255, 95, 179, 0.06) 100%);
+	background: linear-gradient(90deg, rgba(255, 106, 61, 0.06) 0%, rgba(255, 59, 48, 0.04) 100%);
 	border-radius: 24rpx;
 	padding: 22rpx 24rpx;
-	border: 1rpx solid rgba(125, 95, 255, 0.18);
+	border: 1rpx solid rgba(255, 59, 48, 0.15);
 	margin-bottom: 24rpx;
 }
 
@@ -858,10 +649,10 @@ const onShare = () => {
 	gap: 20rpx;
 	padding: 20rpx 24rpx;
 	padding-top: 16rpx;
-	background: rgba(255, 255, 255, 0.94);
+	background: rgba(255, 255, 255, 0.96);
 	backdrop-filter: blur(14rpx);
-	border-top: 1rpx solid rgba(125, 95, 255, 0.12);
-	box-shadow: 0 -8rpx 32rpx rgba(105, 62, 255, 0.08);
+	border-top: 1rpx solid rgba(0, 0, 0, 0.06);
+	box-shadow: 0 -8rpx 32rpx rgba(0, 0, 0, 0.06);
 }
 
 .ghostBtn {
@@ -871,9 +662,9 @@ const onShare = () => {
 	font-size: 28rpx;
 	font-weight: 600;
 	color: var(--accent);
-	background: rgba(125, 95, 255, 0.12);
+	background: rgba(255, 59, 48, 0.08);
 	border-radius: 24rpx;
-	border: 1rpx solid rgba(125, 95, 255, 0.28);
+	border: 1rpx solid rgba(255, 59, 48, 0.2);
 }
 
 .primaryBtn {
@@ -883,9 +674,9 @@ const onShare = () => {
 	font-size: 30rpx;
 	font-weight: 700;
 	color: #ffffff;
-	background: linear-gradient(90deg, #7d5fff 0%, #ff5fb3 100%);
+	background: linear-gradient(90deg, #ff6a5c 0%, #ff3b30 100%);
 	border-radius: 24rpx;
 	border: none;
-	box-shadow: 0 12rpx 28rpx rgba(125, 95, 255, 0.35);
+	box-shadow: 0 12rpx 28rpx rgba(255, 59, 48, 0.32);
 }
 </style>

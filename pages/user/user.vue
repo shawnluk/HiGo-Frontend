@@ -34,6 +34,28 @@
 			</view>
 		</PageScaffold>
 
+		<!-- 退出登录确认弹窗（自定义样式，替代默认 showModal） -->
+		<view v-if="showLogoutModal" class="logoutModalMask" @tap="cancelLogout">
+			<view class="logoutModalCard" @tap.stop>
+				<text class="logoutModalTitle">退出登录</text>
+				<text class="logoutModalDesc">确定要退出当前账号吗？</text>
+				<view class="logoutModalActions">
+					<view
+						class="logoutModalBtn logoutModalBtnGhost"
+						hover-class="logoutModalBtnPressed"
+						hover-stay-time="120"
+						@tap="cancelLogout"
+					>取消</view>
+					<view
+						class="logoutModalBtn logoutModalBtnPrimary"
+						hover-class="logoutModalBtnPressed"
+						hover-stay-time="120"
+						@tap="confirmLogout"
+					>退出</view>
+				</view>
+			</view>
+		</view>
+
 		<QfImageCropper
 			v-if="showCropper"
 			ref="cropper"
@@ -99,6 +121,7 @@ export default {
 			accountList: MOCK_USER_ACCOUNT_LIST.map((row) => ({ ...row })),
 			squadItems: [],
 			showCropper: false,
+			showLogoutModal: false,
 			cropperImg: '',
 			cropCanceled: false,
 			isLoggedIn: false,
@@ -218,6 +241,12 @@ export default {
 				} catch (_) {}
 			}
 
+			// 未登录用户：小队区域不展示任何数据，避免出现灰色占位块
+			if (!this.isLoggedIn) {
+				this.squadItems = []
+				return
+			}
+
 			try {
 				const squadItems = await fetchUserSquadPanel()
 				if (Array.isArray(squadItems) && squadItems.length) {
@@ -255,20 +284,22 @@ export default {
 			})
 		},
 
-		/** 退出登录：确认后清理缓存并刷新页面 */
+		/** 退出登录：打开自定义确认弹窗 */
 		handleLogout() {
-			uni.showModal({
-				title: '退出登录',
-				content: '确定要退出当前账号吗？',
-				confirmText: '退出',
-				confirmColor: '#e54d42',
-				success: (res) => {
-					if (!res.confirm) return
-					this.clearLoginCache()
-					uni.redirectTo({
-						url: '/pages/user/user',
-					})
-				},
+			this.showLogoutModal = true
+		},
+
+		/** 取消退出登录 */
+		cancelLogout() {
+			this.showLogoutModal = false
+		},
+
+		/** 确认退出登录：清理缓存并刷新页面 */
+		confirmLogout() {
+			this.showLogoutModal = false
+			this.clearLoginCache()
+			uni.redirectTo({
+				url: '/pages/user/user',
 			})
 		},
 
@@ -348,6 +379,96 @@ page {
 	font-weight: 600;
 	color: #ff3b30;
 	letter-spacing: 4rpx;
+}
+
+/* 退出登录确认弹窗 */
+.logoutModalMask {
+	position: fixed;
+	left: 0;
+	right: 0;
+	top: 0;
+	bottom: 0;
+	z-index: 1000;
+	background: rgba(17, 17, 17, 0.45);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0 60rpx;
+	box-sizing: border-box;
+}
+
+.logoutModalCard {
+	width: 100%;
+	max-width: 560rpx;
+	background: #ffffff;
+	border-radius: 32rpx;
+	padding: 44rpx 40rpx 32rpx;
+	box-shadow: 0 24rpx 64rpx rgba(0, 0, 0, 0.18);
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	box-sizing: border-box;
+	animation: logoutModalIn 0.18s ease-out;
+}
+
+.logoutModalTitle {
+	font-size: 34rpx;
+	font-weight: 700;
+	color: #1f1f1f;
+	line-height: 48rpx;
+}
+
+.logoutModalDesc {
+	margin-top: 16rpx;
+	font-size: 26rpx;
+	line-height: 38rpx;
+	color: #999999;
+	text-align: center;
+}
+
+.logoutModalActions {
+	margin-top: 36rpx;
+	width: 100%;
+	display: flex;
+	gap: 20rpx;
+}
+
+.logoutModalBtn {
+	flex: 1;
+	height: 88rpx;
+	line-height: 88rpx;
+	text-align: center;
+	border-radius: 24rpx;
+	font-size: 30rpx;
+	font-weight: 600;
+	transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.logoutModalBtnGhost {
+	background: #f3f3f5;
+	color: #666666;
+}
+
+.logoutModalBtnPrimary {
+	background: linear-gradient(90deg, #ff6a5c 0%, #ff3b30 100%);
+	color: #ffffff;
+	box-shadow: 0 12rpx 28rpx rgba(255, 59, 48, 0.28);
+}
+
+.logoutModalBtnPressed {
+	transform: scale(0.97);
+	opacity: 0.82;
+}
+
+@keyframes logoutModalIn {
+	from {
+		opacity: 0;
+		transform: scale(0.92);
+	}
+	to {
+		opacity: 1;
+		transform: scale(1);
+	}
 }
 
 .cropCancel {

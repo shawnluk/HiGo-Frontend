@@ -50,7 +50,7 @@ export async function loginWithPassword(credentials) {
 
 /**
  * 注册新账号
- * @param {{ username: string, password: string }} credentials 用户名与密码
+ * @param {{ username: string, password: string, phone?: string }} credentials 用户名、密码与可选手机号
  * @returns {Promise<{ success?: boolean }>}
  */
 export async function register(credentials) {

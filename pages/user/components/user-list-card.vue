@@ -32,8 +32,12 @@ export default {
 		},
 	},
 	methods: {
-		/** 暂只提示，后续接入具体跳转 */
+		/** 我的行程进入行程页，其余入口暂未接入 */
 		onTap(item) {
+			if (item.label === '我的行程') {
+				uni.navigateTo({ url: '/src/itinerary/itinerary' })
+				return
+			}
 			uni.showToast({
 				title: `${item.label}功能开发中`,
 				icon: 'none',
