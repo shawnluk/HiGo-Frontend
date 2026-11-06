@@ -17,11 +17,19 @@
 					<text class="tabPublishPlus">+</text>
 					<text class="tabPublishText">发布</text>
 				</view>
-				<image
+				<!-- 旧图标逻辑（PNG 双色图）已注释保留，后续需要可随时还原 -->
+				<!-- <image
 					v-else
 					class="tabIcon"
 					:src="index === current ? item.selectedIconPath : item.iconPath"
 					mode="widthFix"
+				/> -->
+				<!-- 新图标逻辑：默认灰色，选中后切换为主题色 SVG -->
+				<image
+					v-else
+					class="tabIcon"
+					:src="index === current ? item.activeIcon : item.icon"
+					mode="aspectFit"
 				/>
 				<text v-if="!item.isPublish" class="tabText">{{ item.text }}</text>
 			</view>
@@ -85,19 +93,25 @@ export default {
 			showPublishSheet: false,
 			isNavigating: false,
 			bubbleTimer: null,
-			// 直接复用 pages.json 中的图标配置
+			// 图标配置：默认灰色 SVG，选中态为主题色 SVG
 			tabs: [
 				{
 					pagePath: 'pages/index/index',
 					text: '活动',
-					iconPath: '/static/home-1.png',
-					selectedIconPath: '/static/home-0.png'
+					// 旧图标（PNG 双色图）配置，暂时保留不删除
+					// iconPath: '/static/home-1.png',
+					// selectedIconPath: '/static/home-0.png',
+					icon: '/static/icons/tabbar/activity.svg',
+					activeIcon: '/static/icons/tabbar/activity-active.svg'
 				},
 				{
 					pagePath: 'pages/moment/moment',
 					text: '时刻',
-					iconPath: '/static/moment-1.png',
-					selectedIconPath: '/static/moment-0.png'
+					// 旧图标（PNG 双色图）配置，暂时保留不删除
+					// iconPath: '/static/moment-1.png',
+					// selectedIconPath: '/static/moment-0.png',
+					icon: '/static/icons/tabbar/moment.svg',
+					activeIcon: '/static/icons/tabbar/moment-active.svg'
 				},
 				{
 					// 发布入口：位于「时刻」和「消息」之间的独立功能按钮
@@ -107,14 +121,20 @@ export default {
 				{
 					pagePath: 'pages/message/message',
 					text: '消息',
-					iconPath: '/static/message-1.png',
-					selectedIconPath: '/static/message-0.png'
+					// 旧图标（PNG 双色图）配置，暂时保留不删除
+					// iconPath: '/static/message-1.png',
+					// selectedIconPath: '/static/message-0.png',
+					icon: '/static/icons/tabbar/message.svg',
+					activeIcon: '/static/icons/tabbar/message-active.svg'
 				},
 				{
 					pagePath: 'pages/user/user',
 					text: '我的',
-					iconPath: '/static/mine-1.png',
-					selectedIconPath: '/static/mine-0.png'
+					// 旧图标（PNG 双色图）配置，暂时保留不删除
+					// iconPath: '/static/mine-1.png',
+					// selectedIconPath: '/static/mine-0.png',
+					icon: '/static/icons/tabbar/mine.svg',
+					activeIcon: '/static/icons/tabbar/mine-active.svg'
 				}
 			]
 		};
@@ -268,6 +288,7 @@ export default {
 
 .tabIcon {
 	width: 40rpx;
+	height: 40rpx;
 	margin-bottom: 8rpx;
 }
 

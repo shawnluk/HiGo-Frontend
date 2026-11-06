@@ -92,10 +92,7 @@ import {
 	MOCK_USER_CONTENT_LIST,
 	MOCK_USER_ACCOUNT_LIST,
 } from '@/mock/user-display.js'
-import {
-	fetchUserProfile,
-	fetchUserSquadPanel,
-} from '@/api/modules/user.js'
+import { fetchUserSquadPanel } from '@/api/modules/user.js'
 import { isTokenExpired } from '@/utils/token.js'
 
 export default {
@@ -221,26 +218,8 @@ export default {
 				this.displayNameLoggedIn = username
 			}
 		},
-		/** 异步加载用户资料与小队列表数据 */
+		/** 异步加载用户小队列表数据（未登录时直接使用本地游客默认数据，不请求资料接口） */
 		async loadUserData() {
-			if (!this.isLoggedIn) {
-				try {
-					const profile = await fetchUserProfile()
-					if (profile) {
-						this.avatarUrl = profile.avatarUrl || this.avatarUrl
-						this.displayNameGuest = profile.displayNameGuest || this.displayNameGuest
-						this.displayNameLoggedIn = profile.displayNameLoggedIn || this.displayNameLoggedIn
-						this.isLoggedIn = profile.isLoggedIn || false
-						if (profile.header) {
-							this.header = { ...this.header, ...profile.header }
-						}
-						if (Array.isArray(profile.dataItems) && profile.dataItems.length) {
-							this.dataItems = profile.dataItems
-						}
-					}
-				} catch (_) {}
-			}
-
 			// 未登录用户：小队区域不展示任何数据，避免出现灰色占位块
 			if (!this.isLoggedIn) {
 				this.squadItems = []

@@ -9,11 +9,22 @@
 					:class="{ hcItemActive: item.isActive }"
 					@click="handleSelect(item, idx)"
 				>
-					<view class="hcIconBox">
+					<view
+						class="hcIconBox"
+						:class="{ hcIconBoxActive: item.isActive }"
+						:style="{
+							background: item.isActive ? '#e8453c' : item.iconBg,
+							borderColor: item.isActive ? 'rgba(232, 69, 60, 0.55)' : 'rgba(0, 0, 0, 0.06)'
+						}"
+					>
+						<!-- 旧图标：直接使用后端返回的 icon（暂时保留不删除）
 						<image class="hcIcon" :src="item.icon" mode="aspectFit" />
+						-->
+						<!-- 新图标：默认显示分类色，点击选中后显示白色 -->
+						<image class="hcIcon" :src="item.isActive ? item.activeIcon : item.icon" mode="aspectFit" />
 						<view v-if="item.badge" class="hcBadge" />
 					</view>
-					<text class="hcText">{{ item.name }}</text>
+					<text class="hcText" :class="{ hcTextActive: item.isActive }">{{ item.name }}</text>
 				</view>
 			</view>
 		</scroll-view>
@@ -22,14 +33,26 @@
 
 <script>
 import { fetchCategories } from '@/api/modules/category.js'
+import { CATEGORY_VISUALS, CATEGORY_KEY_BY_ID } from '@/constants/category-visuals.js'
 
 function normalizeCategory(item) {
 	if (!item || typeof item !== 'object') return null
+	const categoryId = item.category_id || item.id
+	const categoryKey = item.category_key || CATEGORY_KEY_BY_ID[categoryId] || ''
+	const visual = CATEGORY_VISUALS[categoryKey]
+	// 后端返回的原始图标，仅在本地未配置对应分类时兜底使用
+	const fallbackIcon = item.icon || item.icon_url || ''
 	return {
-		category_id: item.category_id || item.id,
+		category_id: categoryId,
 		category_key: item.category_key || '',
 		name: item.category_name || item.text || item.name || '',
-		icon: item.icon || item.icon_url || '',
+		// 旧图标逻辑（直接使用后端 icon），暂时保留不删除
+		// icon: fallbackIcon,
+		// 新图标：默认分类色，选中态为白色版本
+		icon: visual ? visual.icon : fallbackIcon,
+		activeIcon: visual ? visual.activeIcon : fallbackIcon,
+		// 图标容器背景：与图标同色系的浅色
+		iconBg: visual ? visual.bg : '#f5f5f7',
 		badge: Boolean(item.badge),
 		isActive: false,
 	}
@@ -121,6 +144,7 @@ export default {
 	box-shadow: 0 8rpx 22rpx rgba(232, 69, 60, 0.16);
 }
 
+/* 旧分类图标与文字样式（暂时保留不删除）
 .hcIconBox {
 	position: relative;
 	width: 100rpx;
@@ -161,6 +185,50 @@ export default {
 .hcItemActive .hcText {
 	font-weight: 600;
 	color: #e8453c;
+}
+*/
+
+/* ===== 新分类图标样式：图标色与背景色由分类配置驱动 ===== */
+.hcIconBox {
+	position: relative;
+	width: 100rpx;
+	height: 64rpx;
+	border-radius: 22rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border: 1rpx solid rgba(0, 0, 0, 0.06);
+	box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.05);
+	transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* 选中态：背景主题红，图标切换为白色 */
+.hcIconBoxActive {
+	box-shadow: 0 6rpx 16rpx rgba(232, 69, 60, 0.18);
+}
+
+.hcIcon {
+	width: 48rpx;
+	height: 48rpx;
+}
+
+/* 分类文字统一灰色，选中后变黑 */
+.hcText {
+	margin-top: 6rpx;
+	font-size: 24rpx;
+	line-height: 1.2;
+	font-weight: 500;
+	color: #999999;
+	text-align: center;
+	max-width: 112rpx;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.hcTextActive {
+	font-weight: 600;
+	color: #1f1f1f;
 }
 
 .hcBadge {
