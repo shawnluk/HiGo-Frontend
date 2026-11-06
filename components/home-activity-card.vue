@@ -25,11 +25,6 @@
 				<view class="favBtn" :class="{ favActive: isFav(data) }" @click.stop="toggleFav(data)">
 					<text class="favIcon">{{ isFav(data) ? '♥' : '♡' }}</text>
 				</view>
-
-				<!-- 左下角时间 -->
-				<view v-if="shortTime(data)" class="coverTime">
-					<text class="coverTimeText">🕐 {{ shortTime(data) }}</text>
-				</view>
 			</view>
 
 			<!-- 信息区 -->
@@ -39,8 +34,8 @@
 				<view class="metaLine">
 					<text class="metaIcon">📍</text>
 					<text class="metaLocation" :number-of-lines="1">{{ data.location_text }}</text>
-					<text class="metaSeperator">·</text>
-					<text class="metaCount">{{ getActivityJoinCount(data) }} 人报名</text>
+					<text v-if="shortTime(data)" class="metaSeperator">·</text>
+					<text v-if="shortTime(data)" class="metaTime">🕐 {{ shortTime(data) }}</text>
 				</view>
 
 				<view class="footer">
@@ -56,6 +51,7 @@
 								/>
 							</view>
 						</scroll-view>
+						<text class="joinCount">{{ getActivityJoinCount(data) }} 人报名</text>
 					</view>
 
 					<view class="right">
@@ -75,15 +71,25 @@
 			</view>
 			<text v-else-if="!hasMore">没有更多了</text>
 		</view>
+
+		<!-- 登录提示弹窗（统一复用登录弹窗组件） -->
+		<LoginModal
+			:visible="loginVisible"
+			title="需要登录"
+			:content="loginContent"
+			@update:visible="loginVisible = $event"
+		/>
 	</view>
 </template>
 
 <script>
 import { fetchHomeActivityList, reportActivityView, applyHotResult } from '@/api/modules/activity.js'
 import { cacheActivities, getCachedActivity } from '@/utils/activity-cache.js'
+import LoginModal from '@/components/login-modal.vue'
 
 export default {
 	name: 'HomeActivityCard',
+	components: { LoginModal },
 	data() {
 		return {
 			activityList: [],
@@ -100,6 +106,9 @@ export default {
 			hasMore: true,
 			/** 是否正在加载 */
 			loading: false,
+			/** 登录提示弹窗显隐与文案 */
+			loginVisible: false,
+			loginContent: '',
 		}
 	},
 	/** 页面创建：加载首页活动数据并监听分类切换事件 */
@@ -265,29 +274,40 @@ export default {
 			const id = data && (data.activity_id || data.id)
 			return id != null && !!this.favIds[id]
 		},
+		/** 打开登录提示弹窗 */
+		promptLogin(content) {
+			this.loginContent = content
+			this.loginVisible = true
+		},
 		/** 切换收藏状态（仅登录用户可收藏，后端收藏接口后续接入） */
 		toggleFav(data) {
 			const token = uni.getStorageSync('token')
 			if (!token) {
-				uni.showModal({
-					title: '需要登录',
-					content: '登录后即可收藏活动',
-					confirmText: '去登录',
-					cancelText: '取消',
-					success: (res) => {
-						if (res.confirm) uni.navigateTo({ url: '/src/login/login' })
-					},
-				})
+				this.promptLogin('登录后即可收藏活动')
 				return
 			}
 			const id = data && (data.activity_id || data.id)
 			if (id == null) return
 			this.$set(this.favIds, String(id), !this.favIds[id])
 		},
-		/** 立即报名（预留入口，后续接入报名流程） */
+		/** 立即报名：与活动详情页保持一致，未登录先拦截登录，已登录进入报名确认页（仅传 activity_id） */
 		handleSignup(data) {
-			console.log('[HiGo] 立即报名 activity_id =>', data.activity_id || data.id)
-			uni.showToast({ title: '报名流程开发中', icon: 'none' })
+			const activityId = data && (data.activity_id || data.id)
+			let token = ''
+			try {
+				token = uni.getStorageSync('token')
+			} catch (_) {}
+			if (!token) {
+				this.promptLogin('登录后即可报名活动')
+				return
+			}
+			if (!activityId) {
+				uni.showToast({ title: '缺少活动编号', icon: 'none' })
+				return
+			}
+			uni.navigateTo({
+				url: `/src/activity-enroll/activity-enroll?activity_id=${encodeURIComponent(activityId)}`,
+			})
 		},
 		/** 点击活动卡片：跳转到活动详情页，并异步上报一次热度（fire-and-forget，失败静默） */
 		handleCardClick(item) {
@@ -505,20 +525,6 @@ export default {
 	color: #e8453c;
 }
 
-.coverTime {
-	position: absolute;
-	left: 20rpx;
-	bottom: 20rpx;
-	display: flex;
-	align-items: center;
-}
-
-.coverTimeText {
-	color: #ffffff;
-	font-size: 24rpx;
-	font-weight: 500;
-}
-
 .body {
 	padding: 24rpx;
 	display: flex;
@@ -562,10 +568,10 @@ export default {
 	flex-shrink: 0;
 }
 
-.metaCount {
+.metaTime {
+	flex-shrink: 0;
 	font-size: 24rpx;
 	color: #999999;
-	flex-shrink: 0;
 }
 
 .footer {
@@ -619,6 +625,13 @@ export default {
 	border: 2rpx solid #ffffff;
 	background: #f2f2f2;
 	margin-right: -16rpx;
+	flex-shrink: 0;
+}
+
+.joinCount {
+	margin-left: 20rpx;
+	font-size: 24rpx;
+	color: #999999;
 	flex-shrink: 0;
 }
 

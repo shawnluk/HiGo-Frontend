@@ -183,21 +183,36 @@
 				<button class="submitBtn" @click="submitActivity">发布活动</button>
 			</view>
 		</view>
+
+		<!-- 登录提示弹窗（统一复用登录弹窗组件） -->
+		<LoginModal
+			:visible="loginVisible"
+			content="请先登录后再发布活动"
+			:login-mode="loginMode"
+			@update:visible="loginVisible = $event"
+			@cancel="onLoginCancel"
+		/>
 	</view>
 </template>
 
 <script>
 import { createActivity } from '@/api/modules/activity.js'
 import { fetchCategories } from '@/api/modules/category.js'
+import LoginModal from '@/components/login-modal.vue'
 
 /** 活动草稿在本地缓存中的键名 */
 const ACTIVITY_DRAFT_KEY = 'hiGoActivityDraft'
 
 export default {
+	components: { LoginModal },
 	data() {
 		return {
 			showActivityModal: true,
 			scrollAreaPx: 480,
+			/** 登录提示弹窗显隐、跳转方式与触发场景 */
+			loginVisible: false,
+			loginMode: 'navigateTo',
+			loginScene: '',
 			typeOptions: [],
 			timeDatePart: '',
 			timeClockPart: '',
@@ -229,19 +244,9 @@ export default {
 			userInfo = uni.getStorageSync('userInfo')
 		} catch (_) {}
 		if (userId || userInfo) return
-		uni.showModal({
-			title: '提示',
-			content: '请先登录后再发布活动',
-			confirmText: '去登录',
-			cancelText: '取消',
-			success: (res) => {
-				if (res.confirm) {
-					uni.redirectTo({ url: '/src/login/login' })
-				} else {
-					uni.redirectTo({ url: '/pages/index/index' })
-				}
-			},
-		})
+		this.loginScene = 'guard'
+		this.loginMode = 'redirectTo'
+		this.loginVisible = true
 	},
 	/** 页面首次渲染完成：根据窗口与安全区计算滚动区高度 */
 	onReady() {
@@ -387,6 +392,14 @@ export default {
 				url: '/pages/index/index',
 			})
 		},
+		/** 登录提示弹窗点取消：直接进入拦截需回首页，发布拦截则关闭发布面板 */
+		onLoginCancel() {
+			if (this.loginScene === 'guard') {
+				uni.redirectTo({ url: '/pages/index/index' })
+				return
+			}
+			this.cancelActivityModal()
+		},
 		/** 选择活动封面图片 */
 		selectCoverImage() {
 			uni.chooseImage({
@@ -473,21 +486,9 @@ export default {
 				userInfo = uni.getStorageSync('userInfo')
 			} catch (_) {}
 			if (!userId && !userInfo) {
-				uni.showModal({
-					title: '提示',
-					content: '请先登录后再发布活动',
-					confirmText: '去登录',
-					cancelText: '取消',
-					success: (res) => {
-						if (res.confirm) {
-							// 确定：跳转登录页
-							uni.navigateTo({ url: '/src/login/login' })
-						} else {
-							// 取消：关闭发布面板并返回首页
-							this.cancelActivityModal()
-						}
-					},
-				})
+				this.loginScene = 'publish'
+				this.loginMode = 'navigateTo'
+				this.loginVisible = true
 				return
 			}
 			const title = (this.activityForm.title || '').trim()

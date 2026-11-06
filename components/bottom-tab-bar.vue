@@ -72,12 +72,22 @@
 				<text class="cancelTxt">取消</text>
 			</view>
 		</view>
+
+		<!-- 登录提示弹窗（统一复用登录弹窗组件） -->
+		<LoginModal
+			:visible="loginVisible"
+			content="请先登录后再发布内容"
+			@update:visible="loginVisible = $event"
+		/>
 	</view>
 </template>
 
 <script>
+import LoginModal from '@/components/login-modal.vue'
+
 export default {
 	name: 'BottomTabBar',
+	components: { LoginModal },
 	props: {
 		// 当前选中的 tab 下标（0~4，发布按钮本身不可选中）
 		current: {
@@ -93,6 +103,8 @@ export default {
 			showPublishSheet: false,
 			isNavigating: false,
 			bubbleTimer: null,
+			// 登录提示弹窗显隐
+			loginVisible: false,
 			// 图标配置：默认灰色 SVG，选中态为主题色 SVG
 			tabs: [
 				{
@@ -157,17 +169,7 @@ export default {
 		onPublish() {
 			const token = uni.getStorageSync('token');
 			if (!token) {
-				uni.showModal({
-					title: '提示',
-					content: '请先登录后再发布内容',
-					confirmText: '去登录',
-					cancelText: '取消',
-					success: (res) => {
-						if (res.confirm) {
-							uni.navigateTo({ url: '/src/login/login' });
-						}
-					}
-				});
+				this.loginVisible = true;
 				return;
 			}
 			if (this.isNavigating) return;
@@ -243,8 +245,8 @@ export default {
 	align-items: flex-end;
 	z-index: 999;
 	pointer-events: none;
-	padding-left: 20rpx;
-	padding-right: 20rpx;
+	padding-left: 40rpx;
+	padding-right: 40rpx;
 	/* 悬浮间隙 10rpx + 底部安全区（刘海屏 / 手势条 / 虚拟按键） */
 	padding-bottom: 10rpx;
 	padding-bottom: calc(10rpx + constant(safe-area-inset-bottom));
@@ -256,22 +258,24 @@ export default {
 	box-sizing: border-box;
 	width: 100%;
 	max-width: 700rpx;
-	height: 120rpx;
+	/* 高度与选中态胶囊一致，避免选中效果上下出现空白 */
+	height: 100rpx;
 	background: #ffffff;
 	border-radius: 80rpx;
 	/* 内圈 2rpx 浅灰描边，替代原来的外层渐变边框 */
 	box-shadow: inset 0 0 0 2rpx #e6e6e6, 0 18rpx 40rpx rgba(0, 0, 0, 0.08);
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
-	padding: 0 40rpx;
+	/* 左右不留内边距，使选中态首尾与底栏两端对齐 */
+	padding: 0;
+	gap: 16rpx;
 	pointer-events: auto;
 }
 
 .tabItem {
 	flex: 1;
-	height: 88rpx;
-	margin: 0 8rpx;
+	height: 100rpx;
+	margin: 0;
 	border-radius: 60rpx;
 	display: flex;
 	flex-direction: column;

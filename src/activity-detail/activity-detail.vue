@@ -117,6 +117,14 @@
 			<button class="ghostBtn" type="default" @click="onShare">分享</button>
 			<button class="primaryBtn" type="default" @click="onRegister">立即报名</button>
 		</view>
+
+		<!-- 登录提示弹窗（统一复用登录弹窗组件） -->
+		<LoginModal
+			:visible="loginVisible"
+			title="需要登录"
+			:content="loginContent"
+			@update:visible="loginVisible = $event"
+		/>
 	</view>
 </template>
 
@@ -125,6 +133,16 @@ import { computed, onBeforeUnmount, reactive, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { fetchActivityDetail, reportActivityView } from '@/api/modules/activity.js'
 import { updateCachedActivityHot } from '@/utils/activity-cache.js'
+import LoginModal from '@/components/login-modal.vue'
+
+const loginVisible = ref(false)
+const loginContent = ref('')
+
+/** 打开登录提示弹窗 */
+function promptLogin(content) {
+	loginContent.value = content
+	loginVisible.value = true
+}
 
 const actDetail = reactive({
 	data: {},
@@ -374,15 +392,7 @@ const onFavorite = () => {
 		token = uni.getStorageSync('token')
 	} catch (_) {}
 	if (!token) {
-		uni.showModal({
-			title: '需要登录',
-			content: '登录后即可收藏活动',
-			confirmText: '去登录',
-			cancelText: '取消',
-			success: (res) => {
-				if (res.confirm) uni.navigateTo({ url: '/src/login/login' })
-			},
-		})
+		promptLogin('登录后即可收藏活动')
 		return
 	}
 	uni.showToast({ title: '收藏功能开发中', icon: 'none' })
@@ -395,15 +405,7 @@ const onRegister = () => {
 		token = uni.getStorageSync('token')
 	} catch (_) {}
 	if (!token) {
-		uni.showModal({
-			title: '需要登录',
-			content: '登录后即可报名活动',
-			confirmText: '去登录',
-			cancelText: '取消',
-			success: (res) => {
-				if (res.confirm) uni.navigateTo({ url: '/src/login/login' })
-			},
-		})
+		promptLogin('登录后即可报名活动')
 		return
 	}
 	const activityId = detail.value.activity_id

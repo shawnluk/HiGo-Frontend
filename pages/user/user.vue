@@ -56,6 +56,15 @@
 			</view>
 		</view>
 
+		<!-- 登录提示弹窗（统一复用登录弹窗组件） -->
+		<LoginModal
+			:visible="loginVisible"
+			title="请重新登录"
+			content="登录已过期，请重新登录后再操作"
+			:show-cancel="false"
+			@update:visible="loginVisible = $event"
+		/>
+
 		<QfImageCropper
 			v-if="showCropper"
 			ref="cropper"
@@ -83,6 +92,7 @@ import UserListCard from './components/user-list-card.vue'
 // 发布按钮已迁移到 tabbar 中，保留组件文件以备后续使用
 // import UserPublishButton from './components/user-publish-button.vue'
 import QfImageCropper from '@/uni_modules/qf-image-cropper/components/qf-image-cropper/qf-image-cropper.vue'
+import LoginModal from '@/components/login-modal.vue'
 import {
 	MOCK_USER_DEFAULT_AVATAR,
 	MOCK_USER_DISPLAY_NAME_GUEST,
@@ -105,7 +115,8 @@ export default {
 		// UserDataPanel,
 		UserSquadPanel,
 		UserListCard,
-		QfImageCropper
+		QfImageCropper,
+		LoginModal
 	},
 	data() {
 		return {
@@ -119,6 +130,7 @@ export default {
 			squadItems: [],
 			showCropper: false,
 			showLogoutModal: false,
+			loginVisible: false,
 			cropperImg: '',
 			cropCanceled: false,
 			isLoggedIn: false,
@@ -157,19 +169,7 @@ export default {
 			if (!isTokenExpired(token)) return false
 			this.clearLoginCache()
 			this.loadLocalUser()
-			uni.showModal({
-				title: '请重新登录',
-				content: '登录已过期，请重新登录后再操作',
-				confirmText: '去登录',
-				showCancel: false,
-				success: (res) => {
-					if (res.confirm) {
-						uni.navigateTo({
-							url: '/src/login/login',
-						})
-					}
-				},
-			})
+			this.loginVisible = true
 			return true
 		},
 		/** 清理本地登录缓存 */

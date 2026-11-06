@@ -141,11 +141,19 @@
 			</view>
 		</view>
 
-		</view>
+		<!-- 登录提示弹窗（统一复用登录弹窗组件） -->
+		<LoginModal
+			:visible="loginVisible"
+			content="该操作需要登录，是否前往登录？"
+			cancel-text="返回时刻"
+			@update:visible="loginVisible = $event"
+		/>
+	</view>
 </template>
 
 <script>
 	import { MOCK_MOMENT_STORY_FALLBACK_AVATAR } from '@/mock/moment-feed.js'
+	import LoginModal from '@/components/login-modal.vue'
 	import {
 		likeMoment,
 		unlikeMoment,
@@ -154,6 +162,7 @@
 
 	export default {
 		name: 'MomentFeed',
+		components: { LoginModal },
 		props: {
 			posts: {
 				type: Array,
@@ -173,7 +182,9 @@
 			return {
 				likedMap: {},
 				/** 已展开全部评论的帖子 id 集合 */
-				expandedMap: {}
+				expandedMap: {},
+				/** 登录提示弹窗显隐 */
+				loginVisible: false
 			}
 		},
 		computed: {
@@ -320,24 +331,13 @@
 				} catch (_) {}
 				return Boolean(userId || userInfo)
 			},
-			/** 需要登录的操作统一拦截：未登录弹窗询问登录或返回时刻 */
+			/** 需要登录的操作统一拦截：未登录弹出登录提示弹窗 */
 			requireLogin(next) {
 				if (this.isLoggedIn()) {
 					next && next()
 					return
 				}
-				uni.showModal({
-					title: '提示',
-					content: '该操作需要登录，是否前往登录？',
-					confirmText: '去登录',
-					cancelText: '返回时刻',
-					success: (res) => {
-						if (res.confirm) {
-							uni.navigateTo({ url: '/src/login/login' })
-						}
-						// 取消（返回时刻）：停留在当前页面即可，无需处理
-					},
-				})
+				this.loginVisible = true
 			},
 			/** 点击查看全部评论：需登录，在帖子上原地展开/收起 */
 			onViewAllComments(item) {
