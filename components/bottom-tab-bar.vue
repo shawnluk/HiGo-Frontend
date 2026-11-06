@@ -300,14 +300,13 @@ export default {
 	line-height: 1;
 }
 
-/* 居中的发布按钮：沿用原「我的」页悬浮按钮的红色圆形样式，向上突出底栏范围 */
+/* 居中的发布按钮：圆形，高度与底栏一致，整体上移使按钮向上突出底栏 */
 .tabPublishBtn {
 	position: relative;
-	width: 116rpx;
-	height: 116rpx;
-	/* tabItem 是 88rpx 高的纵向 flex，默认 flex-shrink:1 会把圆压成椭圆 */
+	width: 100rpx;
+	height: 100rpx;
+	/* tabItem 是 100rpx 高的纵向 flex，默认 flex-shrink:1 会把按钮压扁 */
 	flex-shrink: 0;
-	min-height: 116rpx;
 	border-radius: 50%;
 	display: flex;
 	flex-direction: column;
@@ -317,8 +316,8 @@ export default {
 	border: 2rpx solid rgba(255, 255, 255, 0.7);
 	box-shadow: 0 14rpx 30rpx rgba(255, 59, 48, 0.3), 0 6rpx 14rpx rgba(255, 106, 92, 0.22);
 	overflow: visible;
-	/* 上移使圆形高出底栏上沿 */
-	transform: translateY(-26rpx);
+	/* 上移使按钮高出底栏上沿 */
+	transform: translateY(-20rpx);
 }
 
 /* 吐泡泡层：动画期间从按钮上方升起 */

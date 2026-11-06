@@ -19,6 +19,8 @@
 	/*每个页面公共css */
 	/* 全局字体：所有文字、数字、字母统一使用微软雅黑 */
 	page,
+	view,
+	text,
 	button,
 	input,
 	textarea,

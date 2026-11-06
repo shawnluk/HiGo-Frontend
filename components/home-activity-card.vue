@@ -29,8 +29,21 @@
 
 			<!-- 信息区 -->
 			<view class="body">
+				<!-- 第一行：活动标题 -->
 				<text class="title" :number-of-lines="2">{{ data.title }}</text>
 
+				<!-- 第二行：小队图标 + 小队名称 + 查看详情按钮 -->
+				<view class="squadRow">
+					<view class="squadInfo">
+						<image class="squadIcon" :src="squadIcon" mode="aspectFit" />
+						<text class="squadName" :number-of-lines="1">{{ squadName(data) }}</text>
+					</view>
+					<view class="squadArrow" @click.stop="handleCardClick(data)">
+						<image class="squadArrowIcon" :src="squadArrowIcon" mode="aspectFit" />
+					</view>
+				</view>
+
+				<!-- 第三行：活动地点 + 活动时间 -->
 				<view class="metaLine">
 					<text class="metaIcon">📍</text>
 					<text class="metaLocation" :number-of-lines="1">{{ data.location_text }}</text>
@@ -109,6 +122,10 @@ export default {
 			/** 登录提示弹窗显隐与文案 */
 			loginVisible: false,
 			loginContent: '',
+			/** 小队图标（卡片小队信息行） */
+			squadIcon: '/static/icons/index/squad.svg',
+			/** 小队行右侧「查看详情」箭头图标 */
+			squadArrowIcon: '/static/icons/ui/chevron-right.svg',
 		}
 	},
 	/** 页面创建：加载首页活动数据并监听分类切换事件 */
@@ -211,6 +228,10 @@ export default {
 			if (data && data.joinCount != null) return Number(data.joinCount) || 0
 			if (data && data.member_count != null) return Number(data.member_count) || 0
 			return this.getActivityMembers(data).length
+		},
+		/** 所属小队名称：兼容后端 squad_name 与驼峰写法 */
+		squadName(data) {
+			return (data && (data.squad_name || data.squadName)) || '暂无小队'
 		},
 		/** 热度显示：读取 data.hot，缺失时兼容 data.heat/0 避免空白 */
 		displayHot(data) {
@@ -536,6 +557,63 @@ export default {
 	line-height: 42rpx;
 	font-weight: 700;
 	color: #1f1f1f;
+}
+
+.squadRow {
+	margin-top: 14rpx;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.squadInfo {
+	display: flex;
+	align-items: center;
+	min-width: 0;
+	flex: 1;
+}
+
+.squadIcon {
+	width: 30rpx;
+	height: 30rpx;
+	flex-shrink: 0;
+	margin-right: 8rpx;
+}
+
+.squadName {
+	flex: 1;
+	min-width: 0;
+	font-size: 24rpx;
+	color: #666666;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.squadArrow {
+	box-sizing: border-box;
+	width: 44rpx;
+	height: 44rpx;
+	border-radius: 50%;
+	background: linear-gradient(90deg, #e8453c, #ff5f4a);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	margin-left: 16rpx;
+	line-height: 0;
+	box-shadow: 0 6rpx 14rpx rgba(232, 69, 60, 0.28);
+}
+
+.squadArrowIcon {
+	width: 20rpx;
+	height: 20rpx;
+	transition: transform 0.15s ease;
+}
+
+/* 鼠标或手势移入圆形背景区域时，仅内部箭头等比例放大 */
+.squadArrow:hover .squadArrowIcon {
+	transform: scale(2);
 }
 
 .metaLine {
