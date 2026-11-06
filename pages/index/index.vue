@@ -1,10 +1,9 @@
 <template>
 	<PageScaffold :tab-index="0">
 		<view class="indexHeader">
-			<!-- 顶部：城市定位 + 通知铃铛 + 头像 -->
+			<!-- 顶部：城市定位 + 通知铃铛 + LOGO -->
 			<IndexTopBar
 				@bell="onBell"
-				@avatar="onAvatar"
 				@region-change="onRegionChange"
 			></IndexTopBar>
 			<!-- 首页搜索框 + 筛选 -->
@@ -92,13 +91,9 @@ export default {
 		onFilter() {
 			uni.showToast({ title: '筛选功能开发中', icon: 'none' })
 		},
-		/** 点击通知铃铛：预留消息入口 */
+		/** 点击通知铃铛：跳转消息页 */
 		onBell() {
-			uni.showToast({ title: '消息通知开发中', icon: 'none' })
-		},
-		/** 点击头像：预留个人中心入口 */
-		onAvatar() {
-			uni.showToast({ title: '个人中心开发中', icon: 'none' })
+			uni.navigateTo({ url: '/pages/message/message' })
 		},
 		/** 城市/区域切换 */
 		onRegionChange(payload) {

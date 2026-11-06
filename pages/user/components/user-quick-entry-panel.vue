@@ -30,12 +30,9 @@ export default {
 		},
 	},
 	methods: {
-		/** 快捷入口：暂只提示，后续接入具体跳转 */
+		/** 快捷入口点击：交由父级统一处理登录拦截与跳转 */
 		onTap(item) {
-			uni.showToast({
-				title: `${item.label}功能开发中`,
-				icon: 'none',
-			})
+			this.$emit('select', item)
 		},
 	},
 }

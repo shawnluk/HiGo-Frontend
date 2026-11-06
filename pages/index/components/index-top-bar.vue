@@ -21,7 +21,7 @@
 		</picker>
 		<!-- #endif -->
 
-		<!-- 右侧：通知铃铛 + 头像 -->
+		<!-- 右侧：通知铃铛 + LOGO（纯展示，无点击跳转） -->
 		<view class="actions">
 			<view class="bellBtn" @click="handleBell">
 				<text class="bellIcon">🔔</text>
@@ -31,7 +31,6 @@
 				class="navLogo"
 				src="/static/logo-nav.png"
 				mode="aspectFit"
-				@click="handleAvatar"
 			/>
 		</view>
 	</view>
@@ -89,10 +88,6 @@ export default {
 		/** 点击通知铃铛 */
 		handleBell() {
 			this.$emit('bell')
-		},
-		/** 点击头像 */
-		handleAvatar() {
-			this.$emit('avatar')
 		},
 	},
 }

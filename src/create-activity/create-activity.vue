@@ -184,12 +184,10 @@
 			</view>
 		</view>
 
-		<!-- 登录提示弹窗（统一复用登录弹窗组件） -->
-		<LoginModal
-			:visible="loginVisible"
+		<!-- 登录拦截组件：统一处理登录态校验与登录提示弹窗 -->
+		<LoginGuard
+			ref="loginGuard"
 			content="请先登录后再发布活动"
-			:login-mode="loginMode"
-			@update:visible="loginVisible = $event"
 			@cancel="onLoginCancel"
 		/>
 	</view>
@@ -198,20 +196,18 @@
 <script>
 import { createActivity } from '@/api/modules/activity.js'
 import { fetchCategories } from '@/api/modules/category.js'
-import LoginModal from '@/components/login-modal.vue'
+import LoginGuard from '@/components/login-guard.vue'
 
 /** 活动草稿在本地缓存中的键名 */
 const ACTIVITY_DRAFT_KEY = 'hiGoActivityDraft'
 
 export default {
-	components: { LoginModal },
+	components: { LoginGuard },
 	data() {
 		return {
 			showActivityModal: true,
 			scrollAreaPx: 480,
-			/** 登录提示弹窗显隐、跳转方式与触发场景 */
-			loginVisible: false,
-			loginMode: 'navigateTo',
+			/** 登录拦截触发场景：guard=进入页面拦截，publish=发布拦截 */
 			loginScene: '',
 			typeOptions: [],
 			timeDatePart: '',
@@ -245,8 +241,11 @@ export default {
 		} catch (_) {}
 		if (userId || userInfo) return
 		this.loginScene = 'guard'
-		this.loginMode = 'redirectTo'
-		this.loginVisible = true
+		this.$nextTick(() => {
+			if (this.$refs.loginGuard) {
+				this.$refs.loginGuard.ensureLogin({ loginMode: 'redirectTo' })
+			}
+		})
 	},
 	/** 页面首次渲染完成：根据窗口与安全区计算滚动区高度 */
 	onReady() {
@@ -487,9 +486,7 @@ export default {
 			} catch (_) {}
 			if (!userId && !userInfo) {
 				this.loginScene = 'publish'
-				this.loginMode = 'navigateTo'
-				this.loginVisible = true
-				return
+				if (!this.$refs.loginGuard.ensureLogin({ loginMode: 'navigateTo' })) return
 			}
 			const title = (this.activityForm.title || '').trim()
 			if (!title) {

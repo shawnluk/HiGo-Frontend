@@ -118,13 +118,8 @@
 			<button class="primaryBtn" type="default" @click="onRegister">立即报名</button>
 		</view>
 
-		<!-- 登录提示弹窗（统一复用登录弹窗组件） -->
-		<LoginModal
-			:visible="loginVisible"
-			title="需要登录"
-			:content="loginContent"
-			@update:visible="loginVisible = $event"
-		/>
+		<!-- 登录拦截组件：统一处理登录态校验与登录提示弹窗 -->
+		<LoginGuard ref="loginGuard" title="需要登录" />
 	</view>
 </template>
 
@@ -133,16 +128,9 @@ import { computed, onBeforeUnmount, reactive, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { fetchActivityDetail, reportActivityView } from '@/api/modules/activity.js'
 import { updateCachedActivityHot } from '@/utils/activity-cache.js'
-import LoginModal from '@/components/login-modal.vue'
+import LoginGuard from '@/components/login-guard.vue'
 
-const loginVisible = ref(false)
-const loginContent = ref('')
-
-/** 打开登录提示弹窗 */
-function promptLogin(content) {
-	loginContent.value = content
-	loginVisible.value = true
-}
+const loginGuard = ref(null)
 
 const actDetail = reactive({
 	data: {},
@@ -387,27 +375,13 @@ const goBack = () => {
 
 /** 收藏：未登录先拦截登录，已登录暂只提示（收藏接口待接入） */
 const onFavorite = () => {
-	let token = ''
-	try {
-		token = uni.getStorageSync('token')
-	} catch (_) {}
-	if (!token) {
-		promptLogin('登录后即可收藏活动')
-		return
-	}
+	if (!loginGuard.value.ensureLogin({ content: '登录后即可收藏活动' })) return
 	uni.showToast({ title: '收藏功能开发中', icon: 'none' })
 }
 
 /** 报名入口：未登录先拦截登录，已登录进入报名确认页（仅传 activity_id） */
 const onRegister = () => {
-	let token = ''
-	try {
-		token = uni.getStorageSync('token')
-	} catch (_) {}
-	if (!token) {
-		promptLogin('登录后即可报名活动')
-		return
-	}
+	if (!loginGuard.value.ensureLogin({ content: '登录后即可报名活动' })) return
 	const activityId = detail.value.activity_id
 	if (!activityId) {
 		uni.showToast({ title: '缺少活动编号', icon: 'none' })

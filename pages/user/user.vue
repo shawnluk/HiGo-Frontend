@@ -21,7 +21,7 @@
 						:stats="statsItems"
 						:star-value="starValue"
 					/> -->
-					<UserQuickEntryPanel />
+					<UserQuickEntryPanel @select="onQuickEntry" />
 				</view>
 				<!-- <UserDataPanel :items="dataItems" /> -->
 				<!-- <UserServiceEntryPanel /> -->
@@ -30,6 +30,9 @@
 				<UserListCard :items="accountList" />
 				<view v-if="isLoggedIn" class="logoutCard" @tap="handleLogout">
 					<text class="logoutText">退出登录</text>
+				</view>
+				<view v-else class="logoutCard" @tap="goLoginPage">
+					<text class="logoutText">去登录</text>
 				</view>
 			</view>
 		</PageScaffold>
@@ -56,14 +59,8 @@
 			</view>
 		</view>
 
-		<!-- 登录提示弹窗（统一复用登录弹窗组件） -->
-		<LoginModal
-			:visible="loginVisible"
-			title="请重新登录"
-			content="登录已过期，请重新登录后再操作"
-			:show-cancel="false"
-			@update:visible="loginVisible = $event"
-		/>
+		<!-- 登录拦截组件：统一处理登录态校验与登录提示弹窗 -->
+		<LoginGuard ref="loginGuard" />
 
 		<QfImageCropper
 			v-if="showCropper"
@@ -92,7 +89,7 @@ import UserListCard from './components/user-list-card.vue'
 // 发布按钮已迁移到 tabbar 中，保留组件文件以备后续使用
 // import UserPublishButton from './components/user-publish-button.vue'
 import QfImageCropper from '@/uni_modules/qf-image-cropper/components/qf-image-cropper/qf-image-cropper.vue'
-import LoginModal from '@/components/login-modal.vue'
+import LoginGuard from '@/components/login-guard.vue'
 import {
 	MOCK_USER_DEFAULT_AVATAR,
 	MOCK_USER_DISPLAY_NAME_GUEST,
@@ -116,7 +113,7 @@ export default {
 		UserSquadPanel,
 		UserListCard,
 		QfImageCropper,
-		LoginModal
+		LoginGuard
 	},
 	data() {
 		return {
@@ -130,7 +127,6 @@ export default {
 			squadItems: [],
 			showCropper: false,
 			showLogoutModal: false,
-			loginVisible: false,
 			cropperImg: '',
 			cropCanceled: false,
 			isLoggedIn: false,
@@ -169,7 +165,15 @@ export default {
 			if (!isTokenExpired(token)) return false
 			this.clearLoginCache()
 			this.loadLocalUser()
-			this.loginVisible = true
+			this.$nextTick(() => {
+				if (this.$refs.loginGuard) {
+					this.$refs.loginGuard.open({
+						title: '请重新登录',
+						content: '登录已过期，请重新登录后再操作',
+						showCancel: false,
+					})
+				}
+			})
 			return true
 		},
 		/** 清理本地登录缓存 */
@@ -255,12 +259,43 @@ export default {
 			this.squadItems = list
 		},
 
+		/** 顶部快捷入口：发布活动 / 管理小队需登录后跳转，其余暂为占位 */
+		onQuickEntry(item) {
+			const label = item && item.label
+			if (label === '发布活动') {
+				if (!this.$refs.loginGuard.ensureLogin({ content: '登录后即可发布活动' })) return
+				uni.navigateTo({ url: '/src/create-activity/create-activity' })
+				return
+			}
+			if (label === '管理小队') {
+				if (!this.$refs.loginGuard.ensureLogin({ content: '登录后即可管理小队' })) return
+				this.openSquadDetail()
+				return
+			}
+			uni.showToast({ title: `${label}功能开发中`, icon: 'none' })
+		},
+		/** 打开首个已加入小队的详情页（无小队时提示先创建） */
+		openSquadDetail() {
+			const item = (this.squadItems || []).find((squad) => squad && squad.id !== '')
+			const id = item ? item.id : ''
+			if (!id) {
+				uni.showToast({ title: '请先创建小队', icon: 'none' })
+				return
+			}
+			uni.navigateTo({
+				url: `/pages/user/components/squad-detail?squadId=${encodeURIComponent(id)}`,
+			})
+		},
+
+		/** 跳转登录页（与登录弹窗的跳转逻辑保持一致） */
+		goLoginPage() {
+			uni.navigateTo({ url: '/src/login/login' })
+		},
+
 		/** 点击用户名：未登录时跳转登录页 */
 		onUsernameClick() {
 			if (this.isLoggedIn) return
-			uni.navigateTo({
-				url: '/src/login/login',
-			})
+			this.goLoginPage()
 		},
 
 		/** 退出登录：打开自定义确认弹窗 */

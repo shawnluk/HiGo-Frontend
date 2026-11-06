@@ -85,24 +85,19 @@
 			<text v-else-if="!hasMore">没有更多了</text>
 		</view>
 
-		<!-- 登录提示弹窗（统一复用登录弹窗组件） -->
-		<LoginModal
-			:visible="loginVisible"
-			title="需要登录"
-			:content="loginContent"
-			@update:visible="loginVisible = $event"
-		/>
+		<!-- 登录拦截组件：统一处理登录态校验与登录提示弹窗 -->
+		<LoginGuard ref="loginGuard" title="需要登录" />
 	</view>
 </template>
 
 <script>
 import { fetchHomeActivityList, reportActivityView, applyHotResult } from '@/api/modules/activity.js'
 import { cacheActivities, getCachedActivity } from '@/utils/activity-cache.js'
-import LoginModal from '@/components/login-modal.vue'
+import LoginGuard from '@/components/login-guard.vue'
 
 export default {
 	name: 'HomeActivityCard',
-	components: { LoginModal },
+	components: { LoginGuard },
 	data() {
 		return {
 			activityList: [],
@@ -119,9 +114,6 @@ export default {
 			hasMore: true,
 			/** 是否正在加载 */
 			loading: false,
-			/** 登录提示弹窗显隐与文案 */
-			loginVisible: false,
-			loginContent: '',
 			/** 小队图标（卡片小队信息行） */
 			squadIcon: '/static/icons/index/squad.svg',
 			/** 小队行右侧「查看详情」箭头图标 */
@@ -295,18 +287,9 @@ export default {
 			const id = data && (data.activity_id || data.id)
 			return id != null && !!this.favIds[id]
 		},
-		/** 打开登录提示弹窗 */
-		promptLogin(content) {
-			this.loginContent = content
-			this.loginVisible = true
-		},
 		/** 切换收藏状态（仅登录用户可收藏，后端收藏接口后续接入） */
 		toggleFav(data) {
-			const token = uni.getStorageSync('token')
-			if (!token) {
-				this.promptLogin('登录后即可收藏活动')
-				return
-			}
+			if (!this.$refs.loginGuard.ensureLogin({ content: '登录后即可收藏活动' })) return
 			const id = data && (data.activity_id || data.id)
 			if (id == null) return
 			this.$set(this.favIds, String(id), !this.favIds[id])
@@ -314,14 +297,7 @@ export default {
 		/** 立即报名：与活动详情页保持一致，未登录先拦截登录，已登录进入报名确认页（仅传 activity_id） */
 		handleSignup(data) {
 			const activityId = data && (data.activity_id || data.id)
-			let token = ''
-			try {
-				token = uni.getStorageSync('token')
-			} catch (_) {}
-			if (!token) {
-				this.promptLogin('登录后即可报名活动')
-				return
-			}
+			if (!this.$refs.loginGuard.ensureLogin({ content: '登录后即可报名活动' })) return
 			if (!activityId) {
 				uni.showToast({ title: '缺少活动编号', icon: 'none' })
 				return

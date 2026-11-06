@@ -141,19 +141,18 @@
 			</view>
 		</view>
 
-		<!-- 登录提示弹窗（统一复用登录弹窗组件） -->
-		<LoginModal
-			:visible="loginVisible"
+		<!-- 登录拦截组件：点赞/评论/发布等操作统一校验登录态 -->
+		<LoginGuard
+			ref="loginGuard"
 			content="该操作需要登录，是否前往登录？"
 			cancel-text="返回时刻"
-			@update:visible="loginVisible = $event"
 		/>
 	</view>
 </template>
 
 <script>
 	import { MOCK_MOMENT_STORY_FALLBACK_AVATAR } from '@/mock/moment-feed.js'
-	import LoginModal from '@/components/login-modal.vue'
+	import LoginGuard from '@/components/login-guard.vue'
 	import {
 		likeMoment,
 		unlikeMoment,
@@ -162,7 +161,7 @@
 
 	export default {
 		name: 'MomentFeed',
-		components: { LoginModal },
+		components: { LoginGuard },
 		props: {
 			posts: {
 				type: Array,
@@ -182,9 +181,7 @@
 			return {
 				likedMap: {},
 				/** 已展开全部评论的帖子 id 集合 */
-				expandedMap: {},
-				/** 登录提示弹窗显隐 */
-				loginVisible: false
+				expandedMap: {}
 			}
 		},
 		computed: {
@@ -321,23 +318,10 @@
 					return false
 				}
 			},
-			/** 校验登录态：未登录返回 false */
-			isLoggedIn() {
-				let userId = ''
-				let userInfo = null
-				try {
-					userId = uni.getStorageSync('userId')
-					userInfo = uni.getStorageSync('userInfo')
-				} catch (_) {}
-				return Boolean(userId || userInfo)
-			},
 			/** 需要登录的操作统一拦截：未登录弹出登录提示弹窗 */
 			requireLogin(next) {
-				if (this.isLoggedIn()) {
-					next && next()
-					return
-				}
-				this.loginVisible = true
+				if (!this.$refs.loginGuard.ensureLogin()) return
+				next && next()
 			},
 			/** 点击查看全部评论：需登录，在帖子上原地展开/收起 */
 			onViewAllComments(item) {

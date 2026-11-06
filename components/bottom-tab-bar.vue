@@ -5,7 +5,7 @@
 				v-for="(item, index) in tabs"
 				:key="item.pagePath || 'publish'"
 				class="tabItem"
-				:class="{ tabItemActive: index === current }"
+				:class="{ tabItemActive: index === current, tabItemPublish: item.isPublish }"
 				@click="onTap(item, index)"
 			>
 				<view v-if="item.isPublish" class="tabPublishBtn" :class="{ isBubbling: isBubbling }">
@@ -73,21 +73,17 @@
 			</view>
 		</view>
 
-		<!-- 登录提示弹窗（统一复用登录弹窗组件） -->
-		<LoginModal
-			:visible="loginVisible"
-			content="请先登录后再发布内容"
-			@update:visible="loginVisible = $event"
-		/>
+		<!-- 登录拦截组件：发布前统一校验登录态 -->
+		<LoginGuard ref="loginGuard" content="请先登录后再发布内容" />
 	</view>
 </template>
 
 <script>
-import LoginModal from '@/components/login-modal.vue'
+import LoginGuard from '@/components/login-guard.vue'
 
 export default {
 	name: 'BottomTabBar',
-	components: { LoginModal },
+	components: { LoginGuard },
 	props: {
 		// 当前选中的 tab 下标（0~4，发布按钮本身不可选中）
 		current: {
@@ -103,8 +99,6 @@ export default {
 			showPublishSheet: false,
 			isNavigating: false,
 			bubbleTimer: null,
-			// 登录提示弹窗显隐
-			loginVisible: false,
 			// 图标配置：默认灰色 SVG，选中态为主题色 SVG
 			tabs: [
 				{
@@ -167,11 +161,7 @@ export default {
 
 		/** 发布活动：先校验登录态，播放冒泡动画后弹出发布选择面板 */
 		onPublish() {
-			const token = uni.getStorageSync('token');
-			if (!token) {
-				this.loginVisible = true;
-				return;
-			}
+			if (!this.$refs.loginGuard.ensureLogin()) return;
 			if (this.isNavigating) return;
 			this.isNavigating = true;
 			this.isBubbling = false;
@@ -266,15 +256,17 @@ export default {
 	box-shadow: inset 0 0 0 2rpx #e6e6e6, 0 18rpx 40rpx rgba(0, 0, 0, 0.08);
 	display: flex;
 	align-items: center;
-	/* 左右不留内边距，使选中态首尾与底栏两端对齐 */
-	padding: 0;
-	gap: 16rpx;
+	/* 内缩 4rpx / 6rpx，避免首尾选中态的底色盖住底栏描边 */
+	padding: 4rpx 2rpx;
+	/* 不再整体留 gap：左右各两个图标各占四分之一，选中态正好铺满半边的一半 */
+	/* gap: 16rpx; */
 	pointer-events: auto;
 }
 
 .tabItem {
 	flex: 1;
-	height: 100rpx;
+	/* 配合底栏上下各 4rpx 内边距，让选中态不压住描边 */
+	height: 92rpx;
 	margin: 0;
 	border-radius: 60rpx;
 	display: flex;
@@ -283,6 +275,13 @@ export default {
 	justify-content: center;
 	color: #222222;
 	font-size: 24rpx;
+}
+
+/* 发布按钮固定占 100rpx（两侧再各留 10rpx 间距），不参与左右四等分 */
+.tabItemPublish {
+	flex: 0 0 100rpx;
+	width: 100rpx;
+	margin: 0 10rpx;
 }
 
 .tabItemActive {

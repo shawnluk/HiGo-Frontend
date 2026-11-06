@@ -1,10 +1,10 @@
 <template>
 	<view class="squadSection">
-		<view class="squadHeader">
+		<view class="squadHeader" :class="{ 'squadHeader--empty': !items.length }">
 			<text class="squadTitle">{{ title }}</text>
 			<text class="squadCreate" @tap="goCreateSquad">››› 点击创建新小队</text>
 		</view>
-		<scroll-view class="squadScroll" scroll-x :show-scrollbar="false">
+		<scroll-view v-if="items.length" class="squadScroll" scroll-x :show-scrollbar="false">
 			<view class="squadRow">
 				<view
 					v-for="(it, i) in items"
@@ -19,14 +19,18 @@
 				</view>
 			</view>
 		</scroll-view>
+		<!-- 登录拦截组件：创建小队 / 查看小队详情前统一校验登录态 -->
+		<LoginGuard ref="loginGuard" content="登录后即可管理小队" />
 	</view>
 </template>
 
 <script>
 import { MOCK_USER_SQUAD_PANEL, MOCK_USER_SQUAD_EMPTY_ITEM } from '@/mock/user-display.js'
+import LoginGuard from '@/components/login-guard.vue'
 
 export default {
 	name: 'UserSquadPanel',
+	components: { LoginGuard },
 	props: {
 		title: {
 			type: String,
@@ -40,6 +44,7 @@ export default {
 	methods: {
 		/** 跳转创建小队页面 */
 		goCreateSquad() {
+			if (!this.$refs.loginGuard.ensureLogin({ content: '登录后即可创建小队' })) return
 			uni.navigateTo({
 				url: '/src/create-unit/create-unit',
 				fail: () => {
@@ -49,6 +54,7 @@ export default {
 		},
 		/** 跳转小队详情页 */
 		goSquadDetail(item) {
+			if (!this.$refs.loginGuard.ensureLogin({ content: '登录后即可查看小队详情' })) return
 			const id = item && item.id ? item.id : ''
 			if (id === '') {
 				uni.showToast({ title: '请先创建小队', icon: 'none' })
@@ -76,6 +82,11 @@ export default {
 	display: flex;
 	align-items: center;
 	margin-bottom: 22rpx;
+}
+
+/* 无小队时不渲染列表，同时去掉头部下方留白 */
+.squadHeader--empty {
+	margin-bottom: 0;
 }
 
 .squadTitle {
