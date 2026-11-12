@@ -36,7 +36,11 @@ export async function fetchHomeActivityList(query = {}) {
 		mock: ({ data }) => {
 			const offset = Number(data && data.offset) || 0
 			const limit = Number(data && data.limit) || 10
-			return HOME_ACTIVITY_LIST.slice(offset, offset + limit)
+			const categoryId = data && data.category_id != null ? Number(data.category_id) : null
+			const list = categoryId != null
+				? HOME_ACTIVITY_LIST.filter((item) => Number(item.category_id) === categoryId)
+				: HOME_ACTIVITY_LIST
+			return list.slice(offset, offset + limit)
 		},
 	})
 }

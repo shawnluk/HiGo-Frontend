@@ -156,10 +156,15 @@ export default {
 		/** 按当前偏移量请求一页活动数据 */
 		async fetchPage() {
 			try {
-				const res = await fetchHomeActivityList({
+				const query = {
 					offset: this.offset,
 					limit: this.pageSize,
-				})
+				}
+				// 选中分类时，优先按分类 id 请求后端，而不是仅读取本地缓存/内存列表
+				if (this.currentCategoryId != null) {
+					query.category_id = this.currentCategoryId
+				}
+				const res = await fetchHomeActivityList(query)
 				console.log('[HiGo] 首页活动列表返回值 =>', res)
 				const { items, total } = this.normalizeActivityResult(res)
 				// 首页列表接口已返回 squad_avatar/squad_name/activity_member，写入本地缓存时显式补齐默认值，
@@ -183,7 +188,7 @@ export default {
 					this.activityList = this.offset === 0 ? pageItems : this.activityList.concat(pageItems)
 					this.hasMore = this.offset + this.pageSize < items.length
 				}
-				this.applyCategoryFilter(this.currentCategoryId)
+				this.applyCategoryFilter()
 			} catch (e) {
 				uni.showToast({
 					title: (e && e.message) || '活动列表加载失败',
@@ -345,24 +350,18 @@ export default {
 			replaceIn(this.activityList)
 			replaceIn(this.filteredItems)
 		},
-		/** 按当前分类筛选活动列表并标记选中态 */
-		applyCategoryFilter(categoryId) {
-			if (!categoryId) {
-				this.filteredItems = this.activityList.map((item) => ({
-					...item,
-					isActive: true,
-				}))
-				return
-			}
-			this.filteredItems = this.activityList
-				.filter((item) => item.category_id === categoryId)
-				.map((item) => ({ ...item, isActive: true }))
+		/** 将当前活动列表映射为展示列表；分类筛选已由后端按 category_id 返回，前端不再二次过滤 */
+		applyCategoryFilter() {
+			this.filteredItems = this.activityList.map((item) => ({
+				...item,
+				isActive: true,
+			}))
 		},
-		/** 接收分类切换事件并应用筛选 */
+		/** 接收分类切换事件：优先按分类 id 发起请求，重置分页后重新加载 */
 		handleCategoryFilter(payload) {
 			const category_id = payload && payload.category_id ? payload.category_id : null
 			this.currentCategoryId = category_id
-			this.applyCategoryFilter(category_id)
+			this.refresh()
 		},
 		/** 返回首页时调用：从本地缓存读取最新热度并同步到列表 */
 		syncHotFromCache() {
@@ -384,7 +383,7 @@ export default {
 			const changed = sync(this.activityList)
 			if (changed) {
 				this.activityList = this.activityList.map((it) => ({ ...it }))
-				this.applyCategoryFilter(this.currentCategoryId)
+				this.applyCategoryFilter()
 			}
 		},
 	},

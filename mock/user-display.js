@@ -164,6 +164,7 @@ export function normalizeSquadDetail(detail) {
 			.replace(/`/g, '')
 			.trim(),
 		name: detail.squad_name || detail.name || '',
+		captainId: detail.captain_id != null ? detail.captain_id : detail.captainId || 0,
 		badge: detail.member_role != null ? mapMemberRole(detail.member_role) : '小队长',
 		activityCount: activities.length || detail.activityCount || 0,
 		memberCount:
@@ -175,6 +176,7 @@ export function normalizeSquadDetail(detail) {
 		createdAtLabel: formatTimeLabel(detail.create_time || detail.createdAtLabel),
 		intro: detail.intro || '',
 		members: members.map((m) => ({
+			userId: m.user_id != null ? m.user_id : m.userId || 0,
 			name: m.nickname || m.name || '',
 			role: resolveRoleText(m.role),
 			avatar: String(m.avatar || '').replace(/`/g, '').trim(),

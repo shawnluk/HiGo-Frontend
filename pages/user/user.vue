@@ -144,11 +144,15 @@ export default {
 		},
 	},
 
-	/** 页面加载：读取参数、校验登录态并加载用户数据 */
+	/** 页面加载：读取入口参数 */
 	onLoad(options) {
 		if (options && options.user_id) {
 			this.userId = options.user_id
 		}
+	},
+
+	/** 每次页面显示时刷新登录态与小队列表（创建/退出小队返回后可看到最新数据） */
+	onShow() {
 		if (this.checkTokenExpired()) return
 		this.loadLocalUser()
 		this.loadUserData()
@@ -235,6 +239,14 @@ export default {
 				if (Array.isArray(squadItems) && squadItems.length) {
 					this.squadItems = squadItems
 				}
+				// 数据宫格「小队」数量以接口返回的真实小队为准（排除空占位项）
+				const squadCount = (this.squadItems || []).filter(
+					(item) => item && item.id !== ''
+				).length
+				const dataItems = (this.dataItems || []).map((row) => ({ ...row }))
+				const squadIdx = dataItems.findIndex((row) => row.label === '小队')
+				if (squadIdx !== -1) dataItems[squadIdx].value = squadCount
+				this.dataItems = dataItems
 			} catch (_) {}
 		},
 

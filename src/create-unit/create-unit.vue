@@ -130,15 +130,20 @@
 		</scroll-view>
 
 		<view class="footer safeFooter">
-			<view class="primary" hover-class="primary--hover" @tap="onSubmitPlaceholder">
-				<text class="primaryTxt">创建小队（待接入）</text>
+			<view class="primary" hover-class="primary--hover" @tap="onSubmit">
+				<text class="primaryTxt">{{ submitting ? '创建中...' : '创建小队' }}</text>
 			</view>
 		</view>
+
+		<!-- 登录拦截组件：提交前统一校验登录态 -->
+		<LoginGuard ref="loginGuard" content="登录后即可创建小队" />
 	</view>
 </template>
 
 <script>
 import { fetchCategories } from '@/api/modules/category.js'
+import { createSquad } from '@/api/modules/user.js'
+import LoginGuard from '@/components/login-guard.vue'
 import { MOCK_INDEX_INITIAL_CITY, MOCK_INDEX_INITIAL_REGION } from '@/mock/index-page.js'
 import {
 	clampSquadName,
@@ -165,9 +170,11 @@ function normalizeCategory(item) {
 }
 
 export default {
+	components: { LoginGuard },
 	data() {
 		return {
 			avatarTempPath: '',
+			submitting: false,
 			unitName: '',
 			unitIntro: '',
 			unitIntroMaxLen: UNIT_INTRO_MAX_LEN,
@@ -343,8 +350,10 @@ export default {
 				},
 			})
 		},
-		/** 提交占位：校验头像/名称/简介后提示接口待接入 */
-		onSubmitPlaceholder() {
+		/** 提交创建小队：校验后调用 POST /api/v1/squads */
+		async onSubmit() {
+			if (this.submitting) return
+			if (!this.$refs.loginGuard.ensureLogin({ content: '登录后即可创建小队' })) return
 			if (!this.avatarTempPath) {
 				uni.showToast({ title: '请先上传小队头像', icon: 'none' })
 				return
@@ -363,7 +372,27 @@ export default {
 				uni.showToast({ title: `简介最多 ${UNIT_INTRO_MAX_LEN} 个字符`, icon: 'none' })
 				return
 			}
-			uni.showToast({ title: '接口待接入', icon: 'none' })
+
+			this.submitting = true
+			try {
+				await createSquad({
+					name,
+					// 头像上传接口待接入，暂按项目约定提交本地临时路径
+					avatar: this.avatarTempPath,
+					intro,
+					category_id: this.squadCategoryId || 0,
+					// 0=自由加入，1=需队长审核
+					join_type: this.needReview ? 1 : 0,
+				})
+				uni.showToast({ title: '创建成功', icon: 'success' })
+				setTimeout(() => this.onBack(), 600)
+			} catch (e) {
+				this.submitting = false
+				uni.showToast({
+					title: (e && e.message) || '创建失败',
+					icon: 'none',
+				})
+			}
 		},
 	},
 }

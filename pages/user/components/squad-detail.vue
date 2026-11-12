@@ -81,8 +81,123 @@
 					<text class="hintTitle">提示</text>
 					<text class="hintBody">{{ detail.notice }}</text>
 				</view>
+
+				<!-- 小队管理入口：队长显示转让，成员显示退出，非成员显示加入 -->
+				<view
+					v-if="isCaptain"
+					class="primaryActionBtn"
+					hover-class="primaryActionBtnHover"
+					@tap="openTransferModal"
+				>
+					<text class="primaryActionBtnTxt">转让队长</text>
+				</view>
+				<view
+					v-else-if="isMember"
+					class="leaveBtn"
+					hover-class="leaveBtnHover"
+					@tap="openLeaveModal"
+				>
+					<text class="leaveBtnTxt">退出小队</text>
+				</view>
+				<view
+					v-else-if="canJoin"
+					class="primaryActionBtn"
+					hover-class="primaryActionBtnHover"
+					@tap="openJoinModal"
+				>
+					<text class="primaryActionBtnTxt">加入小队</text>
+				</view>
 			</view>
 		</scroll-view>
+
+		<!-- 退出小队确认弹窗（自定义样式，替代默认 showModal） -->
+		<view v-if="showLeaveModal" class="leaveModalMask" @tap="cancelLeave">
+			<view class="leaveModalCard" @tap.stop>
+				<text class="leaveModalTitle">退出小队</text>
+				<text class="leaveModalDesc">确定要退出当前小队吗？</text>
+				<view class="leaveModalActions">
+					<view
+						class="leaveModalBtn leaveModalBtnGhost"
+						hover-class="leaveModalBtnPressed"
+						hover-stay-time="120"
+						@tap="cancelLeave"
+					>取消</view>
+					<view
+						class="leaveModalBtn leaveModalBtnPrimary"
+						hover-class="leaveModalBtnPressed"
+						hover-stay-time="120"
+						@tap="confirmLeave"
+					>{{ leaving ? '退出中...' : '退出' }}</view>
+				</view>
+			</view>
+		</view>
+
+		<!-- 转让队长弹窗：仅队长可见，选择目标成员 -->
+		<view v-if="showTransferModal" class="leaveModalMask" @tap="cancelTransfer">
+			<view class="leaveModalCard transferCard" @tap.stop>
+				<text class="leaveModalTitle">转让队长</text>
+				<text class="leaveModalDesc">请选择新的队长，转让后你将变为普通成员</text>
+				<scroll-view scroll-y class="transferList">
+					<view
+						v-for="m in transferCandidates"
+						:key="m.userId"
+						class="transferItem"
+						:class="{ transferItemActive: String(selectedMemberId) === String(m.userId) }"
+						hover-class="transferItemHover"
+						@tap="selectTransferTarget(m)"
+					>
+						<image class="transferAva" :src="m.avatar" mode="aspectFill" />
+						<view class="transferInfo">
+							<text class="transferName">{{ m.name }}</text>
+							<text v-if="m.role" class="transferRole">{{ m.role }}</text>
+						</view>
+						<text
+							v-if="String(selectedMemberId) === String(m.userId)"
+							class="transferCheck"
+						>✓</text>
+					</view>
+					<view v-if="!transferCandidates.length" class="transferEmpty">
+						<text class="transferEmptyTxt">暂无可转让的成员</text>
+					</view>
+				</scroll-view>
+				<view class="leaveModalActions">
+					<view
+						class="leaveModalBtn leaveModalBtnGhost"
+						hover-class="leaveModalBtnPressed"
+						hover-stay-time="120"
+						@tap="cancelTransfer"
+					>取消</view>
+					<view
+						class="leaveModalBtn modalBtnPrimary"
+						hover-class="leaveModalBtnPressed"
+						hover-stay-time="120"
+						@tap="confirmTransfer"
+					>{{ transferring ? '转让中...' : '确认转让' }}</view>
+				</view>
+			</view>
+		</view>
+
+		<!-- 加入小队确认弹窗 -->
+		<view v-if="showJoinModal" class="leaveModalMask" @tap="cancelJoin">
+			<view class="leaveModalCard" @tap.stop>
+				<text class="leaveModalTitle">加入小队</text>
+				<text class="leaveModalDesc">确定要加入「{{ detail.name || '当前小队' }}」吗？</text>
+				<view class="leaveModalActions">
+					<view
+						class="leaveModalBtn leaveModalBtnGhost"
+						hover-class="leaveModalBtnPressed"
+						hover-stay-time="120"
+						@tap="cancelJoin"
+					>取消</view>
+					<view
+						class="leaveModalBtn modalBtnPrimary"
+						hover-class="leaveModalBtnPressed"
+						hover-stay-time="120"
+						@tap="confirmJoin"
+					>{{ joining ? '加入中...' : '加入' }}</view>
+				</view>
+			</view>
+		</view>
 	</view>
 </template>
 
@@ -92,7 +207,7 @@ import {
 	MOCK_USER_SQUAD_DEFAULT_ID,
 	normalizeSquadDetail,
 } from '@/mock/user-display.js'
-import { fetchSquadDetail } from '@/api/modules/user.js'
+import { fetchSquadDetail, joinSquad, leaveSquad, transferCaptain } from '@/api/modules/user.js'
 
 export default {
 	name: 'UserSquadDetail',
@@ -100,12 +215,47 @@ export default {
 		return {
 			squadId: MOCK_USER_SQUAD_DEFAULT_ID,
 			detail: getMockUserSquadDetail(MOCK_USER_SQUAD_DEFAULT_ID),
+			showLeaveModal: false,
+			leaving: false,
+			currentUserId: '',
+			showTransferModal: false,
+			transferring: false,
+			selectedMemberId: '',
+			showJoinModal: false,
+			joining: false,
+			detailLoaded: false,
 		}
+	},
+	computed: {
+		/** 当前用户是否为队长（队长显示「转让队长」，成员显示「退出小队」） */
+		isCaptain() {
+			return (
+				!!this.currentUserId &&
+				String(this.detail.captainId) === String(this.currentUserId)
+			)
+		},
+		/** 可转让的成员列表（排除当前用户本人） */
+		transferCandidates() {
+			return (this.detail.members || []).filter(
+				(m) => m.userId && String(m.userId) !== String(this.currentUserId)
+			)
+		},
+		/** 当前用户是否已在队内 */
+		isMember() {
+			return (this.detail.members || []).some(
+				(m) => m.userId && String(m.userId) === String(this.currentUserId)
+			)
+		},
+		/** 非成员且详情已从后端加载成功时，才允许加入 */
+		canJoin() {
+			return this.detailLoaded && !!this.currentUserId && !this.isMember
+		},
 	},
 	/** 页面加载：解析路由参数 squadId，先用 Mock 兜底渲染，再请求后端详情覆盖 */
 	onLoad(options) {
 		const raw = options && options.squadId ? String(options.squadId) : ''
 		const id = decodeURIComponent(raw) || MOCK_USER_SQUAD_DEFAULT_ID
+		this.currentUserId = uni.getStorageSync('userId') || ''
 		this.squadId = id
 		this.detail = getMockUserSquadDetail(id)
 		this.loadSquadDetail(id)
@@ -124,6 +274,7 @@ export default {
 				if (data) {
 					// 后端返回结构 → 详情页视图结构
 					this.detail = normalizeSquadDetail(data)
+					this.detailLoaded = true
 				}
 			} catch (_) {}
 		},
@@ -139,6 +290,124 @@ export default {
 			uni.navigateTo({
 				url: `/src/activity-detail/activity-detail?activity_id=${activity.id}`,
 			})
+		},
+		/** 打开转让队长弹窗 */
+		openTransferModal() {
+			if (this.transferring) return
+			if (!this.transferCandidates.length) {
+				uni.showToast({ title: '暂无可转让的成员', icon: 'none' })
+				return
+			}
+			this.selectedMemberId = ''
+			this.showTransferModal = true
+		},
+		/** 关闭转让队长弹窗 */
+		cancelTransfer() {
+			if (this.transferring) return
+			this.showTransferModal = false
+		},
+		/** 选择目标成员 */
+		selectTransferTarget(member) {
+			if (this.transferring || !member || !member.userId) return
+			this.selectedMemberId = member.userId
+		},
+		/** 确认转让队长：调用 POST /api/v1/squads/:id/captain */
+		async confirmTransfer() {
+			if (this.transferring) return
+			if (!this.selectedMemberId) {
+				uni.showToast({ title: '请选择新的队长', icon: 'none' })
+				return
+			}
+			this.transferring = true
+			try {
+				const data = await transferCaptain(this.squadId, this.selectedMemberId)
+				if (data) {
+					this.detail = normalizeSquadDetail(data)
+				} else {
+					await this.loadSquadDetail(this.squadId)
+				}
+				this.showTransferModal = false
+				uni.showToast({ title: '已转让队长', icon: 'success' })
+			} catch (e) {
+				uni.showToast({
+					title: (e && e.message) || '转让失败',
+					icon: 'none',
+				})
+			} finally {
+				this.transferring = false
+			}
+		},
+		/** 打开加入小队确认弹窗 */
+		openJoinModal() {
+			if (this.joining) return
+			this.showJoinModal = true
+		},
+		/** 关闭加入小队确认弹窗 */
+		cancelJoin() {
+			if (this.joining) return
+			this.showJoinModal = false
+		},
+		/** 确认加入小队：调用 POST /api/v1/squads/:id/join */
+		async confirmJoin() {
+			if (this.joining) return
+			this.joining = true
+			try {
+				const data = await joinSquad(this.squadId)
+				if (data) {
+					this.detail = normalizeSquadDetail(data)
+				} else {
+					await this.loadSquadDetail(this.squadId)
+				}
+				this.showJoinModal = false
+				uni.showToast({ title: '已加入小队', icon: 'success' })
+			} catch (e) {
+				uni.showToast({
+					title: (e && e.message) || '加入失败',
+					icon: 'none',
+				})
+			} finally {
+				this.joining = false
+			}
+		},
+		/** 打开退出小队确认弹窗 */
+		openLeaveModal() {
+			if (this.leaving) return
+			this.showLeaveModal = true
+		},
+		/** 关闭退出小队确认弹窗 */
+		cancelLeave() {
+			if (this.leaving) return
+			this.showLeaveModal = false
+		},
+		/**
+		 * 确认退出小队。
+		 * 调用 POST /api/v1/squads/:id/leave；队长会被后端拦截并返回提示，
+		 * 退出成功后返回上一页（「我的」页 onShow 会重新拉取小队列表）。
+		 */
+		async confirmLeave() {
+			if (this.leaving) return
+			this.leaving = true
+			try {
+				await leaveSquad(this.squadId)
+				this.showLeaveModal = false
+				uni.showToast({ title: '已退出小队', icon: 'success' })
+				setTimeout(() => this.onBack(), 600)
+			} catch (e) {
+				this.leaving = false
+				uni.showToast({
+					title: (e && e.message) || '退出失败',
+					icon: 'none',
+				})
+			}
+		},
+		/** 返回上一页，无页面栈时回到「我的」页 */
+		onBack() {
+			const pages = getCurrentPages()
+			if (pages.length > 1) {
+				uni.navigateBack()
+			} else {
+				uni.reLaunch({ url: '/pages/user/user' })
+			}
 		},
 	},
 }
@@ -506,5 +775,227 @@ export default {
 	font-size: 24rpx;
 	line-height: 1.55;
 	color: #5a5478;
+}
+
+/* 管理主操作入口（转让队长 / 加入小队） */
+.primaryActionBtn {
+	margin-top: 22rpx;
+	height: 92rpx;
+	border-radius: 24rpx;
+	background: linear-gradient(90deg, #7d5fff 0%, #5d37ff 100%);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	box-shadow: 0 12rpx 28rpx rgba(93, 55, 255, 0.24);
+	transition: opacity 0.15s ease;
+}
+
+.primaryActionBtnHover {
+	opacity: 0.82;
+}
+
+.primaryActionBtnTxt {
+	font-size: 30rpx;
+	font-weight: 600;
+	color: #ffffff;
+}
+
+/* 退出小队入口 */
+.leaveBtn {
+	margin-top: 22rpx;
+	height: 92rpx;
+	border-radius: 24rpx;
+	background: #ffffff;
+	border: 1rpx solid rgba(255, 59, 48, 0.28);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	box-shadow: 0 12rpx 28rpx rgba(255, 59, 48, 0.08);
+	transition: opacity 0.15s ease;
+}
+
+.leaveBtnHover {
+	opacity: 0.75;
+}
+
+.leaveBtnTxt {
+	font-size: 30rpx;
+	font-weight: 600;
+	color: #ff3b30;
+}
+
+/* 退出小队确认弹窗 */
+.leaveModalMask {
+	position: fixed;
+	left: 0;
+	right: 0;
+	top: 0;
+	bottom: 0;
+	z-index: 1000;
+	background: rgba(17, 17, 17, 0.45);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0 60rpx;
+	box-sizing: border-box;
+}
+
+.leaveModalCard {
+	width: 100%;
+	max-width: 560rpx;
+	background: #ffffff;
+	border-radius: 32rpx;
+	padding: 44rpx 40rpx 32rpx;
+	box-shadow: 0 24rpx 64rpx rgba(0, 0, 0, 0.18);
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	box-sizing: border-box;
+	animation: leaveModalIn 0.18s ease-out;
+}
+
+.leaveModalTitle {
+	font-size: 34rpx;
+	font-weight: 700;
+	color: #1f1f1f;
+	line-height: 48rpx;
+}
+
+.leaveModalDesc {
+	margin-top: 16rpx;
+	font-size: 26rpx;
+	line-height: 38rpx;
+	color: #999999;
+	text-align: center;
+}
+
+.leaveModalActions {
+	margin-top: 36rpx;
+	width: 100%;
+	display: flex;
+	gap: 20rpx;
+}
+
+.leaveModalBtn {
+	flex: 1;
+	height: 88rpx;
+	line-height: 88rpx;
+	text-align: center;
+	border-radius: 24rpx;
+	font-size: 30rpx;
+	font-weight: 600;
+	transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.leaveModalBtnGhost {
+	background: #f3f3f5;
+	color: #666666;
+}
+
+.leaveModalBtnPrimary {
+	background: linear-gradient(90deg, #ff6a5c 0%, #ff3b30 100%);
+	color: #ffffff;
+	box-shadow: 0 12rpx 28rpx rgba(255, 59, 48, 0.28);
+}
+
+.leaveModalBtnPressed {
+	transform: scale(0.97);
+	opacity: 0.82;
+}
+
+/* 转让队长弹窗 */
+.transferCard {
+	max-height: 72vh;
+}
+
+.transferList {
+	width: 100%;
+	max-height: 44vh;
+	margin-top: 24rpx;
+}
+
+.transferItem {
+	display: flex;
+	align-items: center;
+	gap: 18rpx;
+	padding: 18rpx 16rpx;
+	border-radius: 20rpx;
+	background: #f7f6fb;
+	margin-bottom: 12rpx;
+	box-sizing: border-box;
+	border: 1rpx solid transparent;
+}
+
+.transferItemActive {
+	background: rgba(125, 95, 255, 0.12);
+	border-color: rgba(125, 95, 255, 0.36);
+}
+
+.transferItemHover {
+	opacity: 0.8;
+}
+
+.transferAva {
+	width: 72rpx;
+	height: 72rpx;
+	border-radius: 18rpx;
+	background: #ece9f7;
+	flex-shrink: 0;
+}
+
+.transferInfo {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 4rpx;
+}
+
+.transferName {
+	font-size: 28rpx;
+	font-weight: 600;
+	color: #1b1732;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.transferRole {
+	font-size: 22rpx;
+	color: #7d5fff;
+}
+
+.transferCheck {
+	font-size: 30rpx;
+	font-weight: 700;
+	color: #5d37ff;
+	flex-shrink: 0;
+}
+
+.transferEmpty {
+	padding: 40rpx 0;
+	text-align: center;
+}
+
+.transferEmptyTxt {
+	font-size: 24rpx;
+	color: #9a94b0;
+}
+
+.modalBtnPrimary {
+	background: linear-gradient(90deg, #7d5fff 0%, #5d37ff 100%);
+	color: #ffffff;
+	box-shadow: 0 12rpx 28rpx rgba(93, 55, 255, 0.24);
+}
+
+@keyframes leaveModalIn {
+	from {
+		opacity: 0;
+		transform: scale(0.92);
+	}
+	to {
+		opacity: 1;
+		transform: scale(1);
+	}
 }
 </style>

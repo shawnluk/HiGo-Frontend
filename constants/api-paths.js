@@ -13,5 +13,6 @@ export const ApiPaths = {
 	userProfile: '/api/v1/user/profile',
 	userSquad: '/api/v1/user/squad',
 	squadDetail: '/api/v1/squads',
+	squadMine: '/api/v1/squads/mine',
 	categories: '/api/v1/categories',
 }
