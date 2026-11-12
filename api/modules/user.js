@@ -41,22 +41,31 @@ function readStoredSquads() {
 }
 
 /**
- * 获取用户小队卡片（多个小队）。
- * 优先请求 GET /api/v1/squads/mine 获取最新列表；请求失败时回退到
- * 登录时缓存的 squads（由 persistLogin 写入）；无数据时返回占位条目。
- * @returns {Promise<Array<{id: string, cover: string, name: string, stats: string, badge: string, topTag: string}>>}
+ * 获取当前登录用户加入的小队列表（后端原始结构）。
+ * 优先请求 GET /api/v1/squads/mine；请求失败时回退到登录时缓存的 squads。
+ * @returns {Promise<Array<Object>>} 小队数组（squad_id、name、avatar 等字段）
  */
-export async function fetchUserSquadPanel() {
+export async function fetchMySquads() {
 	try {
 		const list = await request({
 			url: ApiPaths.squadMine,
 			method: 'GET',
 			mock: () => readStoredSquads(),
 		})
-		return mapSquadsToPanelItems(Array.isArray(list) ? list : [])
+		return Array.isArray(list) ? list : []
 	} catch (_) {
-		return mapSquadsToPanelItems(readStoredSquads())
+		return readStoredSquads()
 	}
+}
+
+/**
+ * 获取用户小队卡片（多个小队）。
+ * 优先使用 GET /api/v1/squads/mine 的最新列表；无数据时返回占位条目。
+ * @returns {Promise<Array<{id: string, cover: string, name: string, stats: string, badge: string, topTag: string}>>}
+ */
+export async function fetchUserSquadPanel() {
+	const list = await fetchMySquads()
+	return mapSquadsToPanelItems(list)
 }
 
 /**

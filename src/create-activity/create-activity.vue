@@ -61,9 +61,12 @@
 
 				<!-- 所在小队 / 发布圈子：合并为一个卡片 -->
 				<view class="sectionCard rowCard">
-					<view class="rowLine" @tap="onPickSquad">
+					<!-- 所在小队：数据来自 GET /api/v1/squads/mine，点击后从右侧弹出选择抽屉 -->
+					<view class="rowLine" @tap="openSquadDrawer">
 						<text class="rowLabel">所在小队</text>
-						<text class="rowValue isPlaceholder">请选择你的小队</text>
+						<text :class="['rowValue', !activityForm.squad_name && 'isPlaceholder']">
+							{{ activityForm.squad_name || squadPlaceholder }}
+						</text>
 						<text class="chevron">›</text>
 					</view>
 
@@ -184,6 +187,59 @@
 			</view>
 		</view>
 
+		<!-- 小队选择：右侧滑出抽屉，选项双列并排展示 -->
+		<view class="squadDrawerRoot" :class="{ 'isOpen': squadDrawerOpen }">
+			<view class="squadDrawerMask" @tap="closeSquadDrawer" @touchmove.stop.prevent></view>
+			<view class="squadDrawerPanel" @tap.stop>
+				<view class="squadDrawerHeader">
+					<view class="squadDrawerHeading">
+						<text class="squadDrawerTitle">选择小队</text>
+						<text class="squadDrawerSubtitle">活动将归属于所选小队</text>
+					</view>
+					<view class="squadDrawerClose" @tap="closeSquadDrawer">×</view>
+				</view>
+
+				<scroll-view scroll-y class="squadDrawerBody">
+					<view v-if="squadLoading" class="squadDrawerState">
+						<text class="squadDrawerStateText">小队加载中...</text>
+					</view>
+					<view v-else-if="!squadOptions.length" class="squadDrawerState">
+						<text class="squadDrawerStateText">还没有加入任何小队</text>
+						<text class="squadDrawerStateHint">可以先创建一个新小队，再发布活动</text>
+					</view>
+					<view v-else class="squadGrid">
+						<view
+							v-for="squad in squadOptions"
+							:key="squad.squad_id"
+							class="squadCard"
+							:class="{ 'isSelected': String(squad.squad_id) === String(activityForm.squad_id) }"
+							@tap="onSelectSquad(squad)"
+						>
+							<image
+								v-if="squad.avatar"
+								class="squadCardAvatar"
+								:src="squad.avatar"
+								mode="aspectFill"
+							/>
+							<view v-else class="squadCardAvatar squadCardAvatarFallback">
+								{{ (squad.name || '').slice(0, 1) }}
+							</view>
+							<text class="squadCardName">{{ squad.name }}</text>
+							<text class="squadCardMeta">{{ squad.member_count || 0 }} 人</text>
+							<view
+								v-if="String(squad.squad_id) === String(activityForm.squad_id)"
+								class="squadCardCheck"
+							>✓</view>
+						</view>
+					</view>
+				</scroll-view>
+
+				<view class="squadDrawerFooter">
+					<view class="squadCreateBtn" @tap="onCreateSquad">＋ 新建小队</view>
+				</view>
+			</view>
+		</view>
+
 		<!-- 登录拦截组件：统一处理登录态校验与登录提示弹窗 -->
 		<LoginGuard
 			ref="loginGuard"
@@ -196,7 +252,12 @@
 <script>
 import { createActivity } from '@/api/modules/activity.js'
 import { fetchCategories } from '@/api/modules/category.js'
+import { fetchMySquads } from '@/api/modules/user.js'
 import LoginGuard from '@/components/login-guard.vue'
+import {
+	ACTIVITY_SELECTED_SQUAD_KEY,
+	PENDING_SQUAD_SELECTION_KEY,
+} from '@/constants/create-activity.js'
 
 /** 活动草稿在本地缓存中的键名 */
 const ACTIVITY_DRAFT_KEY = 'hiGoActivityDraft'
@@ -210,11 +271,20 @@ export default {
 			/** 登录拦截触发场景：guard=进入页面拦截，publish=发布拦截 */
 			loginScene: '',
 			typeOptions: [],
+			/** 当前用户可选的所在小队（来自 GET /api/v1/squads/mine） */
+			squadOptions: [],
+			squadLoading: false,
+			/** 是否已完成首次小队加载，用于 onShow 时判断是否需要刷新 */
+			squadLoaded: false,
+			/** 小队选择抽屉（右侧滑出）是否展开 */
+			squadDrawerOpen: false,
 			timeDatePart: '',
 			timeClockPart: '',
 			coverTempPath: '',
 			feeMode: 'free',
 			activityForm: {
+				squad_id: '',
+				squad_name: '',
 				title: '',
 				category_name: '',
 				category_id: '',
@@ -227,9 +297,21 @@ export default {
 			editorCtx: null,
 		}
 	},
-	/** 页面创建：加载活动类型选项 */
+	computed: {
+		/** 未选小队时行尾占位文案：区分加载中、无小队与待选择 */
+		squadPlaceholder() {
+			if (this.squadLoading) return '小队加载中...'
+			if (!this.squadOptions.length) return '暂无小队，去创建'
+			return '请选择你的小队'
+		},
+	},
+	/** 页面创建：加载活动类型与小队选项 */
 	async created() {
-		await this.loadTypeOptions()
+		await Promise.all([this.loadTypeOptions(), this.loadSquadOptions()])
+	},
+	/** 从创建小队页返回时刷新小队列表，便于选中新建的小队 */
+	onShow() {
+		if (this.squadLoaded) this.loadSquadOptions()
 	},
 	/** 页面加载：兜底校验登录态（防止通过 URL/分享/页面栈等方式直接进入） */
 	onLoad() {
@@ -365,9 +447,127 @@ export default {
 			this.timeClockPart = e.detail.value || ''
 			this.mergeDateTimeIntoForm()
 		},
-		/** 选择所在小队：小队列表接口未接入，暂以提示占位 */
-		onPickSquad() {
-			uni.showToast({ title: '小队列表暂未开放', icon: 'none' })
+		/** 拉取当前用户的小队列表，用于「所在小队」选择 */
+		async loadSquadOptions() {
+			this.squadLoading = true
+			try {
+				const list = await fetchMySquads()
+				const options = (Array.isArray(list) ? list : [])
+					.map((item) => ({
+						squad_id: item.squad_id != null ? item.squad_id : item.id,
+						name: item.name || item.squad_name || '',
+						avatar: item.avatar || item.squad_avatar || '',
+						member_count: Number(item.member_count) || 0,
+					}))
+					.filter((item) => item.squad_id != null && item.squad_id !== '' && item.name)
+				this.squadOptions = options
+
+				const current = options.find(
+					(item) => String(item.squad_id) === String(this.activityForm.squad_id),
+				)
+				if (this.activityForm.squad_id && current) {
+					// 小队可能被重命名，同步为接口返回的最新名称
+					this.activityForm.squad_name = current.name
+				} else if (this.activityForm.squad_id) {
+					// 已选小队不在最新列表中（如已退出小队）时清空选择
+					this.clearSelectedSquad()
+				}
+
+				// 优先回填「创建小队」返回的新小队
+				const pending = this.consumePendingSquad()
+				const pendingMatched =
+					pending && options.find((item) => String(item.squad_id) === String(pending.squad_id))
+				if (!this.activityForm.squad_id && pendingMatched) {
+					this.applySelectedSquad(pendingMatched)
+				}
+
+				// 其次恢复该用户上次选中的小队
+				if (!this.activityForm.squad_id) {
+					const remembered = this.readRememberedSquad()
+					const rememberedMatched =
+						remembered &&
+						options.find((item) => String(item.squad_id) === String(remembered.squad_id))
+					if (rememberedMatched) this.applySelectedSquad(rememberedMatched)
+				}
+
+				// 仅有一个可选小队时默认选中，减少一次操作
+				if (!this.activityForm.squad_id && options.length === 1) {
+					this.applySelectedSquad(options[0])
+				}
+			} finally {
+				this.squadLoading = false
+				this.squadLoaded = true
+			}
+		},
+		/** 打开右侧小队选择抽屉 */
+		openSquadDrawer() {
+			this.squadDrawerOpen = true
+		},
+		/** 关闭右侧小队选择抽屉 */
+		closeSquadDrawer() {
+			this.squadDrawerOpen = false
+		},
+		/** 抽屉内选中某个小队：写入表单并关闭抽屉 */
+		onSelectSquad(squad) {
+			if (!squad) return
+			this.applySelectedSquad(squad)
+			this.closeSquadDrawer()
+		},
+		/** 记录当前选中的小队，并按用户维度记住最近一次选择 */
+		applySelectedSquad(squad) {
+			this.activityForm.squad_id = squad.squad_id
+			this.activityForm.squad_name = squad.name
+			try {
+				uni.setStorageSync(ACTIVITY_SELECTED_SQUAD_KEY, {
+					userId: this.getCurrentUserId(),
+					squad_id: squad.squad_id,
+					name: squad.name,
+				})
+			} catch (_) {}
+		},
+		/** 清空当前选中的小队及缓存 */
+		clearSelectedSquad() {
+			this.activityForm.squad_id = ''
+			this.activityForm.squad_name = ''
+			try {
+				uni.removeStorageSync(ACTIVITY_SELECTED_SQUAD_KEY)
+			} catch (_) {}
+		},
+		/** 读取当前用户 ID（用于隔离不同账号的小队选择缓存） */
+		getCurrentUserId() {
+			try {
+				return uni.getStorageSync('userId') || ''
+			} catch (_) {
+				return ''
+			}
+		},
+		/** 读取上次选中的小队（仅当前账号有效） */
+		readRememberedSquad() {
+			try {
+				const cached = uni.getStorageSync(ACTIVITY_SELECTED_SQUAD_KEY)
+				if (!cached || cached.squad_id == null) return null
+				const userId = this.getCurrentUserId()
+				if (cached.userId && String(cached.userId) !== String(userId)) return null
+				return cached
+			} catch (_) {
+				return null
+			}
+		},
+		/** 读取并清除「创建小队」返回的待回填小队 */
+		consumePendingSquad() {
+			try {
+				const pending = uni.getStorageSync(PENDING_SQUAD_SELECTION_KEY)
+				uni.removeStorageSync(PENDING_SQUAD_SELECTION_KEY)
+				if (!pending || pending.squad_id == null) return null
+				return pending
+			} catch (_) {
+				return null
+			}
+		},
+		/** 抽屉内「新建小队」：跳转创建小队页，创建成功后返回自动选中新小队 */
+		onCreateSquad() {
+			this.closeSquadDrawer()
+			uni.navigateTo({ url: '/src/create-unit/create-unit?from=create-activity' })
 		},
 		/** 门票模式切换：免费时费用置 0，收费时清空待填 */
 		setFeeMode(mode) {
@@ -493,6 +693,11 @@ export default {
 				uni.showToast({ title: '请填写活动标题', icon: 'none' })
 				return
 			}
+			// 后端要求创建活动必须指定所属小队
+			if (!this.activityForm.squad_id) {
+				uni.showToast({ title: '请选择所在小队', icon: 'none' })
+				return
+			}
 			try {
 				await createActivity({ ...this.activityForm })
 				uni.showToast({ title: '发布成功', icon: 'success' })
@@ -500,6 +705,9 @@ export default {
 				this.timeClockPart = ''
 				this.coverTempPath = ''
 				this.activityForm = {
+					// 保留已选小队，方便连续在同一小队下发布活动
+					squad_id: this.activityForm.squad_id,
+					squad_name: this.activityForm.squad_name,
 					title: '',
 					category_name: '',
 					category_id: '',
@@ -1029,6 +1237,237 @@ export default {
 }
 
 .submitBtn:active {
+	opacity: 0.94;
+	transform: scale(0.99);
+}
+
+/* ===== 小队选择抽屉（右侧滑出） ===== */
+.squadDrawerRoot {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	z-index: 1100;
+	visibility: hidden;
+	pointer-events: none;
+	/* 关闭时延迟隐藏，保证滑出动画完整播放 */
+	transition: visibility 0s linear 0.3s;
+}
+
+.squadDrawerRoot.isOpen {
+	visibility: visible;
+	pointer-events: auto;
+	transition-delay: 0s;
+}
+
+.squadDrawerMask {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: rgba(17, 17, 17, 0.45);
+	opacity: 0;
+	transition: opacity 0.3s ease;
+}
+
+.squadDrawerRoot.isOpen .squadDrawerMask {
+	opacity: 1;
+}
+
+.squadDrawerPanel {
+	position: absolute;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	width: 620rpx;
+	max-width: 84vw;
+	background: #ffffff;
+	border-radius: 28rpx 0 0 28rpx;
+	box-shadow: -12rpx 0 48rpx rgba(0, 0, 0, 0.16);
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	box-sizing: border-box;
+	transform: translateX(100%);
+	transition: transform 0.3s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.squadDrawerRoot.isOpen .squadDrawerPanel {
+	transform: translateX(0);
+}
+
+.squadDrawerHeader {
+	flex-shrink: 0;
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 16rpx;
+	padding: calc(24rpx + constant(safe-area-inset-top)) 28rpx 24rpx;
+	padding-top: calc(24rpx + env(safe-area-inset-top, 0px));
+	border-bottom: 1rpx solid #f0f0f0;
+}
+
+.squadDrawerHeading {
+	flex: 1;
+	min-width: 0;
+}
+
+.squadDrawerTitle {
+	display: block;
+	font-size: 34rpx;
+	font-weight: 700;
+	color: #1f1f1f;
+}
+
+.squadDrawerSubtitle {
+	display: block;
+	margin-top: 6rpx;
+	font-size: 24rpx;
+	color: #999999;
+}
+
+.squadDrawerClose {
+	width: 56rpx;
+	height: 56rpx;
+	line-height: 52rpx;
+	text-align: center;
+	border-radius: 50%;
+	background: #f5f5f6;
+	font-size: 34rpx;
+	color: #666666;
+	flex-shrink: 0;
+}
+
+.squadDrawerClose:active {
+	opacity: 0.8;
+}
+
+.squadDrawerBody {
+	flex: 1;
+	min-height: 0;
+	box-sizing: border-box;
+	padding: 24rpx 24rpx 16rpx;
+}
+
+.squadDrawerState {
+	padding: 120rpx 24rpx;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 12rpx;
+}
+
+.squadDrawerStateText {
+	font-size: 28rpx;
+	color: #999999;
+}
+
+.squadDrawerStateHint {
+	font-size: 24rpx;
+	color: #c0c0c0;
+}
+
+.squadGrid {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 20rpx;
+}
+
+.squadCard {
+	position: relative;
+	width: calc(50% - 10rpx);
+	box-sizing: border-box;
+	padding: 28rpx 16rpx 24rpx;
+	border-radius: 22rpx;
+	background: #fafafa;
+	border: 2rpx solid rgba(0, 0, 0, 0.05);
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 10rpx;
+}
+
+.squadCard:active {
+	opacity: 0.9;
+}
+
+.squadCard.isSelected {
+	background: rgba(255, 59, 48, 0.06);
+	border-color: #ff3b30;
+}
+
+.squadCardAvatar {
+	width: 96rpx;
+	height: 96rpx;
+	border-radius: 50%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: #f0f0f0;
+	flex-shrink: 0;
+}
+
+.squadCardAvatarFallback {
+	background: linear-gradient(150deg, #ff6a5c 0%, #ff3b30 100%);
+	color: #ffffff;
+	font-size: 36rpx;
+	font-weight: 700;
+}
+
+.squadCardName {
+	max-width: 100%;
+	font-size: 26rpx;
+	font-weight: 600;
+	color: #1f1f1f;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+.squadCardMeta {
+	font-size: 22rpx;
+	color: #999999;
+}
+
+.squadCardCheck {
+	position: absolute;
+	top: 10rpx;
+	right: 10rpx;
+	width: 34rpx;
+	height: 34rpx;
+	line-height: 34rpx;
+	text-align: center;
+	border-radius: 50%;
+	background: #ff3b30;
+	color: #ffffff;
+	font-size: 20rpx;
+	font-weight: 700;
+}
+
+.squadDrawerFooter {
+	flex-shrink: 0;
+	padding: 16rpx 24rpx 20rpx;
+	padding-bottom: calc(20rpx + constant(safe-area-inset-bottom));
+	padding-bottom: calc(20rpx + env(safe-area-inset-bottom, 0px));
+	border-top: 1rpx solid #f0f0f0;
+	background: #ffffff;
+}
+
+.squadCreateBtn {
+	height: 84rpx;
+	line-height: 84rpx;
+	text-align: center;
+	border-radius: 999rpx;
+	font-size: 28rpx;
+	font-weight: 700;
+	color: #ffffff;
+	background: linear-gradient(150deg, #ff6a5c 0%, #ff3b30 58%, #f32a22 100%);
+	box-shadow: 0 12rpx 28rpx rgba(255, 59, 48, 0.24);
+}
+
+.squadCreateBtn:active {
 	opacity: 0.94;
 	transform: scale(0.99);
 }

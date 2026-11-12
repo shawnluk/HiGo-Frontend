@@ -1,6 +1,6 @@
 # HiGo 前端待接入接口清单
 
-> 统计时间：2026-11-11
+> 统计时间：2026-11-12
 > 核对范围：前端 `pages/`、`src/`、`components/`、`api/modules/`、`config/env.js`；后端 `HiGo-Backend/src/routes/`
 > 当前环境：`useMock: false`，已接入接口均走真实后端
 
@@ -25,17 +25,16 @@
 | 活动详情 | 2 | 0 | 1 | 1 |
 | 报名确认页 | 4 | 0 | 0 | 4 |
 | 行程页 | 3 | 0 | 0 | 3 |
-| 创建活动 | 2 | 1 | 0 | 1 |
+| 创建活动 | 1 | 0 | 0 | 1 |
 | 发布动态 | 1 | 0 | 0 | 1 |
 | 创建小队 | 1 | 0 | 0 | 1 |
-| **合计** | **40** | **2** | **2** | **36** |
+| **合计** | **39** | **1** | **2** | **36** |
 
-## 2 项可直接联调（后端已就绪）
+## 1 项可直接联调（后端已就绪）
 
 | 页面 | 功能 | 后端接口 |
 | --- | --- | --- |
 | 首页 | 搜索关键字 | `GET /api/v1/activities?keyword=` |
-| 创建活动 | 小队选择 | `GET /api/v1/squads/mine` |
 
 ## 已接入（不在待办范围）
 
@@ -44,6 +43,7 @@
 - 分类：`GET /api/v1/categories`
 - 动态：列表、发布、点赞、取消点赞、评论、删除评论
 - 小队：详情 `GET /api/v1/squads/:id`（已对非成员开放）、我的小队 `GET /api/v1/squads/mine`、创建 `POST /api/v1/squads`、加入 `POST /api/v1/squads/:id/join`、退出 `POST /api/v1/squads/:id/leave`、转让队长 `POST /api/v1/squads/:id/captain`
+- 创建活动：所在小队选择 `GET /api/v1/squads/mine`（含按用户记住上次选择、无小队时跳转创建小队、创建成功后返回自动回填新小队）
 
 ---
 
@@ -120,7 +120,6 @@
 
 ## 创建活动
 
-- [ ] **小队选择**：Toast「小队列表暂未开放」；后端 `GET /api/v1/squads/mine` 已有 → 【前端待接】 — `src/create-activity/create-activity.vue:369-372`
 - [ ] **封面 / 富文本图片上传**：本地临时路径直接写入表单 → 【后端待建】 — `src/create-activity/create-activity.vue:403-421`
 
 ## 发布动态

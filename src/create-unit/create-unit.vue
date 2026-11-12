@@ -144,6 +144,7 @@
 import { fetchCategories } from '@/api/modules/category.js'
 import { createSquad } from '@/api/modules/user.js'
 import LoginGuard from '@/components/login-guard.vue'
+import { PENDING_SQUAD_SELECTION_KEY } from '@/constants/create-activity.js'
 import { MOCK_INDEX_INITIAL_CITY, MOCK_INDEX_INITIAL_REGION } from '@/mock/index-page.js'
 import {
 	clampSquadName,
@@ -192,6 +193,8 @@ export default {
 			region: [...MOCK_INDEX_INITIAL_REGION],
 			/** 是否需要队长审核入队申请 */
 			needReview: true,
+			/** 来源页面标识：create-activity=从创建活动页进入，创建成功后回填所选小队 */
+			fromScene: '',
 			_lastSquadWidthToastAt: 0,
 		}
 	},
@@ -204,6 +207,10 @@ export default {
 	},
 	async created() {
 		await this.loadCategories()
+	},
+	/** 记录来源页面，便于创建成功后回到创建活动页并自动选中新小队 */
+	onLoad(options) {
+		this.fromScene = (options && options.from) || ''
 	},
 	methods: {
 		/** 返回上一页，无页面栈时回到首页 */
@@ -375,7 +382,7 @@ export default {
 
 			this.submitting = true
 			try {
-				await createSquad({
+				const created = await createSquad({
 					name,
 					// 头像上传接口待接入，暂按项目约定提交本地临时路径
 					avatar: this.avatarTempPath,
@@ -384,6 +391,18 @@ export default {
 					// 0=自由加入，1=需队长审核
 					join_type: this.needReview ? 1 : 0,
 				})
+				// 从创建活动页进入时，把新小队暂存起来，返回后自动回填
+				if (this.fromScene === 'create-activity' && created) {
+					const createdId = created.squad_id != null ? created.squad_id : created.id
+					if (createdId != null) {
+						try {
+							uni.setStorageSync(PENDING_SQUAD_SELECTION_KEY, {
+								squad_id: createdId,
+								name: created.squad_name || created.name || name,
+							})
+						} catch (_) {}
+					}
+				}
 				uni.showToast({ title: '创建成功', icon: 'success' })
 				setTimeout(() => this.onBack(), 600)
 			} catch (e) {

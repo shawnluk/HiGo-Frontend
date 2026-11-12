@@ -101,6 +101,8 @@ export default {
 	top: 0;
 	bottom: 0;
 	z-index: 1300;
+	/* 弹窗可能挂在 pointer-events: none 的容器内（如自定义底栏），需显式恢复可交互 */
+	pointer-events: auto;
 	background: rgba(17, 17, 17, 0.45);
 	display: flex;
 	align-items: center;
