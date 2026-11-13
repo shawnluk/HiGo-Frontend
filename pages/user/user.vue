@@ -16,12 +16,13 @@
 						:member-link="header.memberLink"
 						@avatar-click="handleCrop"
 						@username-click="onUsernameClick"
+						@settings-click="goProfilePage"
 					/>
 					<!-- <UserStatsPanel
 						:stats="statsItems"
 						:star-value="starValue"
 					/> -->
-					<UserQuickEntryPanel @select="onQuickEntry" />
+					<UserQuickEntryPanel />
 				</view>
 				<!-- <UserDataPanel :items="dataItems" /> -->
 				<!-- <UserServiceEntryPanel /> -->
@@ -59,9 +60,6 @@
 			</view>
 		</view>
 
-		<!-- 登录拦截组件：统一处理登录态校验与登录提示弹窗 -->
-		<LoginGuard ref="loginGuard" />
-
 		<QfImageCropper
 			v-if="showCropper"
 			ref="cropper"
@@ -69,6 +67,7 @@
 			:width="300"
 			:height="300"
 			:radius="150"
+			:z-index="9999"
 			fileType="png"
 			@crop="onCropperCrop"
 		>
@@ -89,7 +88,6 @@ import UserListCard from './components/user-list-card.vue'
 // 发布按钮已迁移到 tabbar 中，保留组件文件以备后续使用
 // import UserPublishButton from './components/user-publish-button.vue'
 import QfImageCropper from '@/uni_modules/qf-image-cropper/components/qf-image-cropper/qf-image-cropper.vue'
-import LoginGuard from '@/components/login-guard.vue'
 import {
 	MOCK_USER_DEFAULT_AVATAR,
 	MOCK_USER_DISPLAY_NAME_GUEST,
@@ -99,8 +97,14 @@ import {
 	MOCK_USER_CONTENT_LIST,
 	MOCK_USER_ACCOUNT_LIST,
 } from '@/mock/user-display.js'
-import { fetchUserSquadPanel } from '@/api/modules/user.js'
+import {
+	fetchUserProfile,
+	fetchUserSquadPanel,
+	updateProfile,
+} from '@/api/modules/user.js'
+import { uploadAvatar } from '@/utils/cos-upload.js'
 import { isTokenExpired } from '@/utils/token.js'
+import { pickSingleImage } from '@/utils/image-picker.js'
 
 export default {
 	components: {
@@ -112,8 +116,7 @@ export default {
 		// UserDataPanel,
 		UserSquadPanel,
 		UserListCard,
-		QfImageCropper,
-		LoginGuard
+		QfImageCropper
 	},
 	data() {
 		return {
@@ -144,18 +147,19 @@ export default {
 		},
 	},
 
-	/** 页面加载：读取入口参数 */
+	/** 页面加载：读取参数、校验登录态并加载用户数据 */
 	onLoad(options) {
 		if (options && options.user_id) {
 			this.userId = options.user_id
 		}
-	},
-
-	/** 每次页面显示时刷新登录态与小队列表（创建/退出小队返回后可看到最新数据） */
-	onShow() {
 		if (this.checkTokenExpired()) return
 		this.loadLocalUser()
 		this.loadUserData()
+	},
+
+	/** 从其他页面返回时同步本地缓存（个人资料页可能修改了昵称 / 头像） */
+	onShow() {
+		this.loadLocalUser()
 	},
 
 	methods: {
@@ -169,14 +173,18 @@ export default {
 			if (!isTokenExpired(token)) return false
 			this.clearLoginCache()
 			this.loadLocalUser()
-			this.$nextTick(() => {
-				if (this.$refs.loginGuard) {
-					this.$refs.loginGuard.open({
-						title: '请重新登录',
-						content: '登录已过期，请重新登录后再操作',
-						showCancel: false,
-					})
-				}
+			uni.showModal({
+				title: '请重新登录',
+				content: '登录已过期，请重新登录后再操作',
+				confirmText: '去登录',
+				showCancel: false,
+				success: (res) => {
+					if (res.confirm) {
+						uni.navigateTo({
+							url: '/src/login/login',
+						})
+					}
+				},
 			})
 			return true
 		},
@@ -226,8 +234,26 @@ export default {
 				this.displayNameLoggedIn = username
 			}
 		},
-		/** 异步加载用户小队列表数据（未登录时直接使用本地游客默认数据，不请求资料接口） */
+		/** 异步加载用户资料与小队列表数据 */
 		async loadUserData() {
+			if (!this.isLoggedIn) {
+				try {
+					const profile = await fetchUserProfile()
+					if (profile) {
+						this.avatarUrl = profile.avatarUrl || this.avatarUrl
+						this.displayNameGuest = profile.displayNameGuest || this.displayNameGuest
+						this.displayNameLoggedIn = profile.displayNameLoggedIn || this.displayNameLoggedIn
+						this.isLoggedIn = profile.isLoggedIn || false
+						if (profile.header) {
+							this.header = { ...this.header, ...profile.header }
+						}
+						if (Array.isArray(profile.dataItems) && profile.dataItems.length) {
+							this.dataItems = profile.dataItems
+						}
+					}
+				} catch (_) {}
+			}
+
 			// 未登录用户：小队区域不展示任何数据，避免出现灰色占位块
 			if (!this.isLoggedIn) {
 				this.squadItems = []
@@ -236,17 +262,10 @@ export default {
 
 			try {
 				const squadItems = await fetchUserSquadPanel()
-				if (Array.isArray(squadItems) && squadItems.length) {
-					this.squadItems = squadItems
-				}
-				// 数据宫格「小队」数量以接口返回的真实小队为准（排除空占位项）
-				const squadCount = (this.squadItems || []).filter(
+				// 过滤接口返回的空占位项（id 为空）：新用户 / 无小队用户不渲染灰色占位块
+				this.squadItems = (Array.isArray(squadItems) ? squadItems : []).filter(
 					(item) => item && item.id !== ''
-				).length
-				const dataItems = (this.dataItems || []).map((row) => ({ ...row }))
-				const squadIdx = dataItems.findIndex((row) => row.label === '小队')
-				if (squadIdx !== -1) dataItems[squadIdx].value = squadCount
-				this.dataItems = dataItems
+				)
 			} catch (_) {}
 		},
 
@@ -271,43 +290,27 @@ export default {
 			this.squadItems = list
 		},
 
-		/** 顶部快捷入口：发布活动 / 管理小队需登录后跳转，其余暂为占位 */
-		onQuickEntry(item) {
-			const label = item && item.label
-			if (label === '发布活动') {
-				if (!this.$refs.loginGuard.ensureLogin({ content: '登录后即可发布活动' })) return
-				uni.navigateTo({ url: '/src/create-activity/create-activity' })
-				return
-			}
-			if (label === '管理小队') {
-				if (!this.$refs.loginGuard.ensureLogin({ content: '登录后即可管理小队' })) return
-				this.openSquadDetail()
-				return
-			}
-			uni.showToast({ title: `${label}功能开发中`, icon: 'none' })
-		},
-		/** 打开首个已加入小队的详情页（无小队时提示先创建） */
-		openSquadDetail() {
-			const item = (this.squadItems || []).find((squad) => squad && squad.id !== '')
-			const id = item ? item.id : ''
-			if (!id) {
-				uni.showToast({ title: '请先创建小队', icon: 'none' })
-				return
-			}
-			uni.navigateTo({
-				url: `/pages/user/components/squad-detail?squadId=${encodeURIComponent(id)}`,
-			})
-		},
-
-		/** 跳转登录页（与登录弹窗的跳转逻辑保持一致） */
-		goLoginPage() {
-			uni.navigateTo({ url: '/src/login/login' })
-		},
-
 		/** 点击用户名：未登录时跳转登录页 */
 		onUsernameClick() {
 			if (this.isLoggedIn) return
-			this.goLoginPage()
+			uni.navigateTo({
+				url: '/src/login/login',
+			})
+		},
+
+		/** 跳转登录页 */
+		goLoginPage() {
+			uni.navigateTo({
+				url: '/src/login/login',
+			})
+		},
+
+		/** 点击顶部设置按钮：登录后进入个人资料页 */
+		goProfilePage() {
+			if (!this.isLoggedIn) return
+			uni.navigateTo({
+				url: '/src/user-profile/user-profile',
+			})
 		},
 
 		/** 退出登录：打开自定义确认弹窗 */
@@ -329,14 +332,19 @@ export default {
 			})
 		},
 
-		/** 打开头像裁剪组件并选择图片 */
-		handleCrop() {
-			this.showCropper = true
-			this.cropperImg = ''
+		/** 打开头像裁剪组件并选择图片（需登录） */
+		async handleCrop() {
+			if (!this.isLoggedIn) {
+				uni.navigateTo({
+					url: '/src/login/login',
+				})
+				return
+			}
+			const path = await pickSingleImage()
+			if (!path) return
 			this.cropCanceled = false
-			this.$nextTick(() => {
-				this.$refs.cropper && this.$refs.cropper.chooseImage()
-			})
+			this.cropperImg = path
+			this.showCropper = true
 		},
 
 		/** 取消裁剪并复位裁剪状态 */
@@ -349,15 +357,38 @@ export default {
 			this.cropperImg = ''
 		},
 
-		/** 裁剪完成：更新头像并关闭裁剪组件 */
-		onCropperCrop(e) {
+		/** 裁剪完成：关闭裁剪组件，上传裁剪图到 COS，再用返回的 URL 更新头像 */
+		async onCropperCrop(e) {
 			if (this.cropCanceled) return
-			if (e && e.tempFilePath) {
-				this.avatarUrl = e.tempFilePath
-			}
+			const tempFilePath = e && e.tempFilePath
 			this.showCropper = false
 			this.cropperImg = ''
 			this.cropCanceled = false
+			if (!tempFilePath) return
+
+			uni.showLoading({ title: '上传中...', mask: true })
+			try {
+				const avatarUrl = await uploadAvatar(tempFilePath)
+				await updateProfile({ avatar: avatarUrl })
+				this.avatarUrl = avatarUrl
+				this.persistAvatar(avatarUrl)
+				uni.hideLoading()
+				uni.showToast({ title: '头像已更新', icon: 'success' })
+			} catch (err) {
+				uni.hideLoading()
+				uni.showToast({ title: (err && err.message) || '头像更新失败', icon: 'none' })
+			}
+		},
+
+		/** 将新头像 URL 写回本地缓存，供其他页面（个人资料页等）读取 */
+		persistAvatar(avatarUrl) {
+			try {
+				const userInfo = uni.getStorageSync('userInfo')
+				if (userInfo && typeof userInfo === 'object') {
+					userInfo.avatar = avatarUrl
+					uni.setStorageSync('userInfo', userInfo)
+				}
+			} catch (_) {}
 		}
 
 		/** 发布活动已迁移到 tabbar（见 components/bottom-tab-bar.vue 的 onPublish） */

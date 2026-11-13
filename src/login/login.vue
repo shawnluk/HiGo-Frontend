@@ -240,6 +240,28 @@
 				</view>
 			</view>
 		</view>
+
+		<!-- 注册确认弹窗（自定义样式，替代默认 showModal） -->
+		<view v-if="showRegisterModal" class="registerModalMask" @tap="cancelRegister">
+			<view class="registerModalCard" @tap.stop>
+				<text class="registerModalTitle">确认注册</text>
+				<text class="registerModalDesc">确定以「{{ pendingUsername }}」注册账号并提交吗？</text>
+				<view class="registerModalActions">
+					<view
+						class="registerModalBtn registerModalBtnGhost"
+						hover-class="registerModalBtnPressed"
+						hover-stay-time="120"
+						@tap="cancelRegister"
+					>再想想</view>
+					<view
+						class="registerModalBtn registerModalBtnPrimary"
+						hover-class="registerModalBtnPressed"
+						hover-stay-time="120"
+						@tap="confirmRegister"
+					>确认提交</view>
+				</view>
+			</view>
+		</view>
 	</view>
 </template>
 
@@ -253,6 +275,8 @@ export default {
 			// 登录方式：password 账号密码（默认）、phone 手机号验证码
 			loginMethod: 'password',
 			agreed: false,
+			showRegisterModal: false,
+			pendingUsername: '',
 			showPassword: false,
 			showConfirmPassword: false,
 			countdown: 0,
@@ -380,7 +404,8 @@ export default {
 				this.countdown = 0
 			}
 		},
-		async handleRegister() {
+		/** 注册前校验，通过后打开自定义确认弹窗 */
+		handleRegister() {
 			const u = (this.form.username || '').trim()
 			const p = (this.form.password || '').trim()
 			const cp = (this.form.confirmPassword || '').trim()
@@ -409,27 +434,46 @@ export default {
 				uni.showToast({ title: '请输入正确的手机号', icon: 'none' })
 				return
 			}
+			this.pendingUsername = u
+			this.showRegisterModal = true
+		},
+		/** 关闭注册确认弹窗 */
+		cancelRegister() {
+			this.showRegisterModal = false
+		},
+		/** 确认提交注册 */
+		async confirmRegister() {
+			this.showRegisterModal = false
+			const u = (this.form.username || '').trim()
+			const p = (this.form.password || '').trim()
+			const phone = (this.form.phone || '').trim()
 			try {
-				const confirmed = await new Promise((resolve) => {
-					uni.showModal({
-						title: '确认注册',
-						content: `确定以「${u}」注册账号并提交吗？`,
-						confirmText: '确认提交',
-						cancelText: '再想想',
-						success: (res) => resolve(res.confirm === true),
-						fail: () => resolve(false),
-					})
-				})
-				if (!confirmed) return
 				await register({ username: u, password: p, phone })
-				uni.showToast({ title: '注册成功，请登录', icon: 'none' })
-				this.switchMode('login')
+				// 注册成功后立即调用登录接口，获取完整 profile/squads 并写入本地缓存
+				try {
+					const res = await loginWithPassword({ username: u, password: p })
+					uni.showToast({ title: '注册成功，已自动登录', icon: 'none' })
+					this.goUserPage(res)
+				} catch (_) {
+					uni.showToast({ title: '注册成功，请登录', icon: 'none' })
+					this.switchMode('login')
+				}
 			} catch (e) {
 				uni.showToast({
 					title: (e && e.message) || '注册失败',
 					icon: 'none'
 				})
 			}
+		},
+		/** 登录成功后跳转「我的」页面 */
+		goUserPage(res) {
+			const userId = res && res.user_id !== undefined ? res.user_id : ''
+			uni.redirectTo({
+				url: `/pages/user/user?user_id=${userId}`,
+				fail: () => {
+					uni.navigateBack()
+				},
+			})
 		},
 		/** 提交处理：注册走注册流程，登录则校验后调用登录接口并跳转 */
 		async handleSubmit() {
@@ -453,14 +497,7 @@ export default {
 			}
 			try {
 				const res = await loginWithPassword({ username: u, password: p })
-				// console.log(res)
-				const userId = res && res.user_id !== undefined ? res.user_id : ''
-				uni.redirectTo({
-					url: `/pages/user/user?user_id=${userId}`,
-					fail: () => {
-						uni.navigateBack()
-					},
-				})
+				this.goUserPage(res)
 			} catch (e) {
 				uni.showToast({
 					title: (e && e.message) || '登录失败',
@@ -906,5 +943,95 @@ export default {
 .socialLabel {
 	font-size: 22rpx;
 	color: #8a8a8e;
+}
+
+/* 注册确认弹窗（与「我的」页退出登录弹窗风格一致） */
+.registerModalMask {
+	position: fixed;
+	left: 0;
+	right: 0;
+	top: 0;
+	bottom: 0;
+	z-index: 1000;
+	background: rgba(17, 17, 17, 0.45);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0 60rpx;
+	box-sizing: border-box;
+}
+
+.registerModalCard {
+	width: 100%;
+	max-width: 560rpx;
+	background: #ffffff;
+	border-radius: 32rpx;
+	padding: 44rpx 40rpx 32rpx;
+	box-shadow: 0 24rpx 64rpx rgba(0, 0, 0, 0.18);
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	box-sizing: border-box;
+	animation: registerModalIn 0.18s ease-out;
+}
+
+.registerModalTitle {
+	font-size: 34rpx;
+	font-weight: 700;
+	color: #1f1f1f;
+	line-height: 48rpx;
+}
+
+.registerModalDesc {
+	margin-top: 16rpx;
+	font-size: 26rpx;
+	line-height: 38rpx;
+	color: #999999;
+	text-align: center;
+}
+
+.registerModalActions {
+	margin-top: 36rpx;
+	width: 100%;
+	display: flex;
+	gap: 20rpx;
+}
+
+.registerModalBtn {
+	flex: 1;
+	height: 88rpx;
+	line-height: 88rpx;
+	text-align: center;
+	border-radius: 24rpx;
+	font-size: 30rpx;
+	font-weight: 600;
+	transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.registerModalBtnGhost {
+	background: #f3f3f5;
+	color: #666666;
+}
+
+.registerModalBtnPrimary {
+	background: linear-gradient(90deg, #ff6a5c 0%, #ff3b30 100%);
+	color: #ffffff;
+	box-shadow: 0 12rpx 28rpx rgba(255, 59, 48, 0.28);
+}
+
+.registerModalBtnPressed {
+	transform: scale(0.97);
+	opacity: 0.82;
+}
+
+@keyframes registerModalIn {
+	from {
+		opacity: 0;
+		transform: scale(0.92);
+	}
+	to {
+		opacity: 1;
+		transform: scale(1);
+	}
 }
 </style>

@@ -11,6 +11,7 @@ export const ApiPaths = {
 	authLogin: '/api/v1/auth/login',
 	authRegister: '/api/v1/auth/register',
 	userProfile: '/api/v1/user/profile',
+	uploadCredentials: '/api/v1/upload/credentials',
 	userSquad: '/api/v1/user/squad',
 	squadDetail: '/api/v1/squads',
 	squadMine: '/api/v1/squads/mine',

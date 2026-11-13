@@ -1,8 +1,19 @@
 <template>
 	<view class="squadSection">
 		<view class="squadHeader" :class="{ 'squadHeader--empty': !items.length }">
-			<text class="squadTitle">{{ title }}</text>
-			<text class="squadCreate" @tap="goCreateSquad">››› 点击创建新小队</text>
+			<view class="squadTitleWrap">
+				<view class="squadTitleMark"></view>
+				<text class="squadTitle">{{ title }}</text>
+			</view>
+			<view
+				class="squadCreate"
+				hover-class="squadCreate--hover"
+				hover-stay-time="120"
+				@tap="goCreateSquad"
+			>
+				<uni-icons type="plusempty" size="13" color="#ff3b30" />
+				<text class="squadCreateText">创建新小队</text>
+			</view>
 		</view>
 		<scroll-view v-if="items.length" class="squadScroll" scroll-x :show-scrollbar="false">
 			<view class="squadRow">
@@ -81,12 +92,28 @@ export default {
 .squadHeader {
 	display: flex;
 	align-items: center;
+	justify-content: space-between;
 	margin-bottom: 22rpx;
 }
 
 /* 无小队时不渲染列表，同时去掉头部下方留白 */
 .squadHeader--empty {
 	margin-bottom: 0;
+}
+
+/* 标题左侧红色竖条，增强区块识别度 */
+.squadTitleWrap {
+	display: flex;
+	align-items: center;
+	gap: 14rpx;
+}
+
+.squadTitleMark {
+	width: 8rpx;
+	height: 32rpx;
+	border-radius: 999rpx;
+	background: linear-gradient(180deg, #ff6b5e 0%, #ff3b30 100%);
+	box-shadow: 0 4rpx 10rpx rgba(255, 59, 48, 0.26);
 }
 
 .squadTitle {
@@ -96,15 +123,27 @@ export default {
 	letter-spacing: 0.2rpx;
 }
 
+/* 右侧「创建小队」胶囊按钮：浅红底 + 细边框 */
 .squadCreate {
-	margin-left: auto;
-	font-size: 24rpx;
-	font-weight: 500;
-	color: #ff3b30;
+	display: flex;
+	align-items: center;
+	gap: 6rpx;
+	padding: 10rpx 22rpx;
+	border-radius: 999rpx;
+	background: rgba(255, 59, 48, 0.08);
+	border: 1rpx solid rgba(255, 59, 48, 0.2);
+	transition: transform 0.15s ease, background 0.15s ease;
 }
 
-.squadCreate:active {
-	opacity: 0.6;
+.squadCreate--hover {
+	background: rgba(255, 59, 48, 0.16);
+	transform: scale(0.96);
+}
+
+.squadCreateText {
+	font-size: 24rpx;
+	font-weight: 600;
+	color: #ff3b30;
 }
 
 .squadScroll {

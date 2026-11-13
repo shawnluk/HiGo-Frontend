@@ -159,7 +159,11 @@ export function request(options) {
 			success: (res) => {
 				const { statusCode, data: raw } = res
 				if (statusCode < 200 || statusCode >= 300) {
-					reject(new Error(`HTTP ${statusCode}`))
+					// 优先使用后端返回的错误文案（如「用户名已存在」），无文案时回退 HTTP 状态码
+					const message =
+						(raw && typeof raw === 'object' && (raw.message || raw.msg)) ||
+						`HTTP ${statusCode}`
+					reject(new Error(message))
 					return
 				}
 				try {

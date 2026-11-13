@@ -65,6 +65,7 @@
 <script module="cropper" lang="wxs" src="./qf-image-cropper.wxs"></script>
 <!-- #endif -->
 <script>
+	import { pickSingleImage } from '@/utils/image-picker.js';
 	/** 裁剪区域最大宽高所占屏幕宽度百分比 */
 	const AREA_SIZE = 75;
 	/** 图片默认宽高 */
@@ -387,6 +388,14 @@
 					return;
 				}
 				// #endif
+				// #ifdef H5
+				pickSingleImage().then((path) => {
+					if (!path) return;
+					this.resetData();
+					this.initImage(path);
+				});
+				// #endif
+				// #ifndef H5
 				uni.chooseImage({
 					...options,
 					count: 1,
@@ -395,6 +404,7 @@
 						this.initImage(res.tempFiles[0].path);
 					}
 				});
+				// #endif
 			},
 			/** 重置数据 */
 			resetData() {
@@ -693,7 +703,8 @@
 			z-index: 99;
 			display: flex;
 			flex-direction: row;
-			background-color: $uni-bg-color-grey;
+			/* 主题化：白色操作栏，配合应用的红色主色 */
+			background-color: #ffffff;
 
 			.action-bar {
 				position: absolute;
@@ -714,13 +725,16 @@
 			}
 			 
 			.rechoose {
-				color: $uni-color-primary;
+				/* 主题化：次要操作使用红色文字 */
+				color: #ff3b30;
+				font-weight: 600;
 				padding: 0 $uni-spacing-row-lg;
 				line-height: 100rpx;
 			}
 
 			.choose-btn {
-				color: $uni-color-primary;
+				color: #ff3b30;
+				font-weight: 600;
 				text-align: center;
 				line-height: 100rpx;
 				flex: 1;
@@ -728,7 +742,9 @@
 
 			.button {
 				margin: auto $uni-spacing-row-lg auto auto;
-				background-color: $uni-color-primary;
+				/* 主题化：主操作按钮使用品牌红 */
+				background-color: #ff3b30;
+				border-radius: 999rpx;
 				color: #fff;
 			}
 		}

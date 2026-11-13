@@ -27,7 +27,15 @@
 				<text class="bellIcon">🔔</text>
 				<view v-if="unread" class="bellDot" />
 			</view>
+			<!-- 已设置头像的登录用户展示头像，其余情况展示品牌 logo -->
 			<image
+				v-if="avatarUrl"
+				class="navAvatar"
+				:src="avatarUrl"
+				mode="aspectFill"
+			/>
+			<image
+				v-else
 				class="navLogo"
 				src="/static/logo-nav.png"
 				mode="aspectFit"
@@ -54,6 +62,11 @@ export default {
 		unread: {
 			type: Boolean,
 			default: true,
+		},
+		/** 用户头像地址，为空时展示 logo */
+		avatarUrl: {
+			type: String,
+			default: '',
 		},
 	},
 	data() {
@@ -198,5 +211,16 @@ export default {
 	height: 60rpx;
 	flex-shrink: 0;
 	transform: translateY(-10rpx);
+}
+
+/* 用户头像：与铃铛按钮同高的圆形头像 */
+.navAvatar {
+	width: 72rpx;
+	height: 72rpx;
+	border-radius: 50%;
+	border: 2rpx solid rgba(0, 0, 0, 0.06);
+	background: #ffffff;
+	flex-shrink: 0;
+	overflow: hidden;
 }
 </style>

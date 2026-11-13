@@ -1,8 +1,9 @@
 <template>
 	<PageScaffold :tab-index="0">
 		<view class="indexHeader">
-			<!-- 顶部：城市定位 + 通知铃铛 + LOGO -->
+			<!-- 顶部：城市定位 + 通知铃铛 + 用户头像 / LOGO -->
 			<IndexTopBar
+				:avatar-url="headerAvatar"
 				@bell="onBell"
 				@region-change="onRegionChange"
 			></IndexTopBar>
@@ -45,6 +46,8 @@ export default {
 		return {
 			/** 下拉刷新中标记，用于显示自定义转圈 */
 			refreshing: false,
+			/** 顶部展示的用户头像，为空时展示 logo */
+			headerAvatar: '',
 		}
 	},
 	/** 下拉刷新：触发活动卡片刷新，保证转圈动画至少持续 3 秒 */
@@ -71,12 +74,23 @@ export default {
 	},
 	/** 页面显示/返回时：同步活动卡片的最新热度（如从详情页返回后热度 +1） */
 	onShow() {
+		this.loadHeaderAvatar()
 		const card = this.$refs.activityCard
 		if (card && typeof card.syncHotFromCache === 'function') {
 			card.syncHotFromCache()
 		}
 	},
 	methods: {
+		/** 读取本地登录用户的头像：未登录或未设置头像时留空，顶部展示 logo */
+		loadHeaderAvatar() {
+			let userId = ''
+			let userInfo = null
+			try {
+				userId = uni.getStorageSync('userId')
+				userInfo = uni.getStorageSync('userInfo')
+			} catch (_) {}
+			this.headerAvatar = userId && userInfo && userInfo.avatar ? userInfo.avatar : ''
+		},
 		/** 延时工具，返回 Promise */
 		delay(ms) {
 			return new Promise((resolve) => setTimeout(resolve, ms))

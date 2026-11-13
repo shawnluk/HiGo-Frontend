@@ -2,7 +2,7 @@
 	<view class="profileCard">
 		<view class="profileInner">
 			<view class="profileHeader">
-				<view class="userInfo">
+				<view class="userInfo" :class="{ 'userInfo--withSettings': isLoggedIn }">
 					<image
 						class="avatar"
 						:src="avatarUrl"
@@ -17,6 +17,16 @@
 						>{{ displayName }}</view>
 						<view v-if="partnerId" class="userId">趣玩号：{{ partnerId }} <text class="idTag">{{ partnerIdTag }}</text></view>
 					</view>
+				</view>
+				<!-- 设置入口：仅登录用户展示，点击跳转个人资料页 -->
+				<view
+					v-if="isLoggedIn"
+					class="settingsBtn"
+					hover-class="settingsBtnHover"
+					hover-stay-time="120"
+					@click="$emit('settings-click')"
+				>
+					<uni-icons type="gear" size="20" color="#ffffff" />
 				</view>
 			</view>
 
@@ -120,6 +130,7 @@ export default {
 
 .profileHeader {
 	/* 顶部铺满后留出更充裕的上内边距 */
+	position: relative;
 	padding: 48rpx 22rpx 20rpx;
 }
 
@@ -127,6 +138,32 @@ export default {
 	display: flex;
 	align-items: center;
 	gap: 22rpx;
+}
+
+/* 已登录时右侧留出设置按钮的位置，避免昵称/趣玩号被遮挡 */
+.userInfo--withSettings {
+	padding-right: 88rpx;
+}
+
+/* 右上角圆形设置按钮 */
+.settingsBtn {
+	position: absolute;
+	top: 54rpx;
+	right: 22rpx;
+	width: 64rpx;
+	height: 64rpx;
+	border-radius: 50%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: rgba(255, 255, 255, 0.22);
+	border: 1rpx solid rgba(255, 255, 255, 0.42);
+	box-shadow: 0 6rpx 16rpx rgba(150, 20, 15, 0.18);
+	box-sizing: border-box;
+}
+
+.settingsBtnHover {
+	background: rgba(255, 255, 255, 0.36);
 }
 
 .avatar {
