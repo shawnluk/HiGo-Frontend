@@ -3,7 +3,7 @@ import { ApiPaths } from '@/constants/api-paths.js'
 
 /**
  * 登录成功后本地保存 token 与用户信息
- * @param {{ token?: string, user_id?: number, username?: string, profile?: object }} data
+ * @param {{ token?: string, user_id?: number, username?: string, phone?: string, email?: string, profile?: object }} data
  */
 function persistLogin(data) {
 	if (!data) return
@@ -12,7 +12,13 @@ function persistLogin(data) {
 		if (data.user_id !== undefined) uni.setStorageSync('userId', data.user_id)
 		if (data.squads) uni.setStorageSync('squads', data.squads)
 		if (data.username) uni.setStorageSync('username', data.username)
-		if (data.profile) uni.setStorageSync('userInfo', data.profile)
+		if (data.profile) {
+			// phone / email 位于 users 表，登录接口以顶层字段返回，合并进 userInfo 供个人资料页展示
+			const profile = { ...data.profile }
+			if (data.phone !== undefined) profile.phone = data.phone
+			if (data.email !== undefined) profile.email = data.email
+			uni.setStorageSync('userInfo', profile)
+		}
 	} catch (_) {}
 }
 
@@ -50,7 +56,7 @@ export async function loginWithPassword(credentials) {
 
 /**
  * 注册新账号
- * @param {{ username: string, password: string, phone?: string }} credentials 用户名、密码与可选手机号
+ * @param {{ username: string, password: string, phone?: string, email?: string }} credentials 用户名、密码与可选手机号、邮箱
  * @returns {Promise<{ success?: boolean }>}
  */
 export async function register(credentials) {

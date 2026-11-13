@@ -5,8 +5,19 @@ node_modules/
 unpackage/
 .hbuilderx/
 .idea/
+.trae/
+.screenshots/
 
 /* 忽略的文件 */
 .project
 .DS_Store
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.env
+.env.local
+.env.*.local
+project.private.config.json
 

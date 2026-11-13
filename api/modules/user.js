@@ -34,7 +34,7 @@ export async function fetchUserProfile() {
 /**
  * 更新当前登录用户资料（部分更新，仅出现在 payload 中的字段才会被修改）。
  * 后端：POST /api/v1/user/profile；userId 由后端从 token 解析，不从前端传入。
- * @param {Object} [payload] 可修改字段：phone、nickname、avatar、birthday、gender、password
+ * @param {Object} [payload] 可修改字段：phone、email、nickname、avatar、birthday、gender、password
  * @returns {Promise<Object>} 已解包的业务数据（更新后的用户信息）
  */
 export async function updateProfile(payload = {}) {

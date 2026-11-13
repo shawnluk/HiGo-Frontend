@@ -88,7 +88,24 @@
 						</view>
 					</view>
 
-					<!-- 注册可选：手机号 + 验证码 -->
+					<!-- 注册可选：邮箱 + 手机号 + 验证码 -->
+					<view v-if="mode === 'register'" class="field">
+						<view class="labelRow">
+							<text class="labelIco">✉️</text>
+							<text class="label">邮箱（可选）</text>
+						</view>
+						<input
+							class="input"
+							type="text"
+							:maxlength="128"
+							:value="form.email"
+							placeholder="请输入邮箱"
+							placeholder-class="ph"
+							:adjust-position="true"
+							:cursor-spacing="24"
+							@input="onEmailInput"
+						/>
+					</view>
 					<view v-if="mode === 'register'" class="field">
 						<view class="labelRow">
 							<text class="labelIco">📱</text>
@@ -285,6 +302,7 @@ export default {
 				username: '',
 				password: '',
 				confirmPassword: '',
+				email: '',
 				phone: '',
 				code: '',
 			},
@@ -326,6 +344,10 @@ export default {
 		/** 手机号输入处理：同步到表单 */
 		onPhoneInput(e) {
 			this.form.phone = this.inputValue(e)
+		},
+		/** 邮箱输入处理：同步到表单 */
+		onEmailInput(e) {
+			this.form.email = this.inputValue(e)
 		},
 		/** 验证码输入处理：同步到表单 */
 		onCodeInput(e) {
@@ -410,6 +432,7 @@ export default {
 			const p = (this.form.password || '').trim()
 			const cp = (this.form.confirmPassword || '').trim()
 			const phone = (this.form.phone || '').trim()
+			const email = (this.form.email || '').trim()
 			if (!u || !p) {
 				uni.showToast({ title: '用户名和密码都要填哦', icon: 'none' })
 				return
@@ -434,6 +457,10 @@ export default {
 				uni.showToast({ title: '请输入正确的手机号', icon: 'none' })
 				return
 			}
+			if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+				uni.showToast({ title: '请输入正确的邮箱', icon: 'none' })
+				return
+			}
 			this.pendingUsername = u
 			this.showRegisterModal = true
 		},
@@ -447,8 +474,9 @@ export default {
 			const u = (this.form.username || '').trim()
 			const p = (this.form.password || '').trim()
 			const phone = (this.form.phone || '').trim()
+			const email = (this.form.email || '').trim()
 			try {
-				await register({ username: u, password: p, phone })
+				await register({ username: u, password: p, phone, email })
 				// 注册成功后立即调用登录接口，获取完整 profile/squads 并写入本地缓存
 				try {
 					const res = await loginWithPassword({ username: u, password: p })
