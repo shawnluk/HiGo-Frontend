@@ -1,4 +1,4 @@
-import { request } from '@/api/http.js'
+import { request, isAuthError } from '@/api/http.js'
 import { ApiPaths } from '@/constants/api-paths.js'
 import {
 	MOCK_USER_DEFAULT_AVATAR,
@@ -57,7 +57,8 @@ function readStoredSquads() {
 
 /**
  * 获取当前登录用户加入的小队列表（后端原始结构）。
- * 优先请求 GET /api/v1/squads/mine；请求失败时回退到登录时缓存的 squads。
+ * 优先请求 GET /api/v1/squads/mine；普通请求失败时回退到登录时缓存的 squads，
+ * 但登录态失效（未登录 / token 过期 / 401）时向上抛出，交由调用方切回访客态。
  * @returns {Promise<Array<Object>>} 小队数组（squad_id、name、avatar 等字段）
  */
 export async function fetchMySquads() {
@@ -68,7 +69,8 @@ export async function fetchMySquads() {
 			mock: () => readStoredSquads(),
 		})
 		return Array.isArray(list) ? list : []
-	} catch (_) {
+	} catch (err) {
+		if (isAuthError(err)) throw err
 		return readStoredSquads()
 	}
 }
@@ -103,7 +105,7 @@ export async function fetchSquadDetail(squadId) {
  * 后端：POST /api/v1/squads（成功返回 201 与新建小队对象，含 squad_id）
  * @param {Object} [payload] 小队表单：
  *  - name 小队名称（必填，后端兼容 squad_name）
- *  - avatar 小队头像（后端兼容 squad_avatar）
+ *  - avatar_temp_key 临时头像对象键（必填，前端先直传到 tmp-avatar/<userId>/）
  *  - intro 小队简介
  *  - category_id 分类 ID
  *  - max_members 人数上限（后端默认 20）
@@ -120,7 +122,7 @@ export async function createSquad(payload = {}) {
 			return {
 				squad_id: `mock-${Date.now()}`,
 				squad_name: data.name || data.squad_name || '',
-				squad_avatar: data.avatar || data.squad_avatar || '',
+				squad_avatar: data.avatar_temp_key ? 'https://mock.local/unit-avatar/mock.png' : '',
 				captain_id: data.captain_id || 0,
 				vice_captain_id: data.vice_captain_id != null ? data.vice_captain_id : null,
 				intro: data.intro || '',
@@ -134,6 +136,26 @@ export async function createSquad(payload = {}) {
 				update_time: now,
 			}
 		},
+	})
+}
+
+/**
+ * 编辑小队（仅队长）。
+ * 后端：POST /api/v1/squads/:id/update
+ * @param {string|number} squadId 小队 ID
+ * @param {Object} [payload] 可编辑字段：
+ *  - name 小队名称（必填）
+ *  - intro 小队简介
+ *  - category_id 分类 ID
+ *  - avatar_temp_key 可选，新头像的临时对象键
+ * @returns {Promise<Object>} 已解包的小队详情（更新后）
+ */
+export async function updateSquad(squadId, payload = {}) {
+	return request({
+		url: `${ApiPaths.squadDetail}/${squadId}/update`,
+		method: 'POST',
+		data: payload,
+		mock: () => getMockUserSquadDetail(squadId),
 	})
 }
 

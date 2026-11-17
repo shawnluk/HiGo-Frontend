@@ -39,6 +39,7 @@ import IndexTopBar from './components/index-top-bar.vue'
 import IndexSearchBox from './components/index-search-box.vue'
 import HomeCategoryBar from './components/home-category-bar.vue'
 import IndexMarquee from './components/index-marquee.vue'
+import { isTokenExpired } from '@/utils/token.js'
 
 export default {
 	components: { PageScaffold, SwiperBar, HomeActivityCard, HomeCategoryBar, IndexTopBar, IndexSearchBox, IndexMarquee },
@@ -81,15 +82,17 @@ export default {
 		}
 	},
 	methods: {
-		/** 读取本地登录用户的头像：未登录或未设置头像时留空，顶部展示 logo */
+		/** 读取本地登录用户的头像：未登录 / token 过期或未设置头像时留空，顶部展示 logo */
 		loadHeaderAvatar() {
-			let userId = ''
+			let token = ''
 			let userInfo = null
 			try {
-				userId = uni.getStorageSync('userId')
+				token = uni.getStorageSync('token') || ''
 				userInfo = uni.getStorageSync('userInfo')
 			} catch (_) {}
-			this.headerAvatar = userId && userInfo && userInfo.avatar ? userInfo.avatar : ''
+			// 仅有效登录态才展示用户头像，token 过期时按访客处理回退默认 logo
+			const loggedIn = Boolean(token) && !isTokenExpired(token)
+			this.headerAvatar = loggedIn && userInfo && userInfo.avatar ? userInfo.avatar : ''
 		},
 		/** 延时工具，返回 Promise */
 		delay(ms) {

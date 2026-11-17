@@ -253,6 +253,7 @@
 import { createActivity } from '@/api/modules/activity.js'
 import { fetchCategories } from '@/api/modules/category.js'
 import { fetchMySquads } from '@/api/modules/user.js'
+import { isAuthError } from '@/api/http.js'
 import LoginGuard from '@/components/login-guard.vue'
 import {
 	ACTIVITY_SELECTED_SQUAD_KEY,
@@ -494,6 +495,9 @@ export default {
 				if (!this.activityForm.squad_id && options.length === 1) {
 					this.applySelectedSquad(options[0])
 				}
+			} catch (err) {
+				// 登录态失效时接口层已清缓存并提示重新登录，这里清空选项避免残留
+				if (isAuthError(err)) this.squadOptions = []
 			} finally {
 				this.squadLoading = false
 				this.squadLoaded = true

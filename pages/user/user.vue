@@ -38,6 +38,9 @@
 			</view>
 		</PageScaffold>
 
+		<!-- 登录拦截弹窗：统一处理未登录 / 登录过期提示 -->
+		<LoginGuard ref="loginGuard" />
+
 		<!-- 退出登录确认弹窗（自定义样式，替代默认 showModal） -->
 		<view v-if="showLogoutModal" class="logoutModalMask" @tap="cancelLogout">
 			<view class="logoutModalCard" @tap.stop>
@@ -98,13 +101,14 @@ import {
 	MOCK_USER_ACCOUNT_LIST,
 } from '@/mock/user-display.js'
 import {
-	fetchUserProfile,
 	fetchUserSquadPanel,
 	updateProfile,
 } from '@/api/modules/user.js'
+import { isAuthError } from '@/api/http.js'
 import { uploadAvatar } from '@/utils/cos-upload.js'
 import { isTokenExpired } from '@/utils/token.js'
 import { pickSingleImage } from '@/utils/image-picker.js'
+import LoginGuard from '@/components/login-guard.vue'
 
 export default {
 	components: {
@@ -116,7 +120,8 @@ export default {
 		// UserDataPanel,
 		UserSquadPanel,
 		UserListCard,
-		QfImageCropper
+		QfImageCropper,
+		LoginGuard,
 	},
 	data() {
 		return {
@@ -147,19 +152,21 @@ export default {
 		},
 	},
 
-	/** 页面加载：读取参数、校验登录态并加载用户数据 */
+	/** 页面加载：仅读取页面参数，登录态校验与数据加载统一放到 onShow */
 	onLoad(options) {
 		if (options && options.user_id) {
 			this.userId = options.user_id
 		}
+	},
+
+	/**
+	 * 每次进入 / 返回页面：先校验 token 是否过期，再同步本地缓存并刷新小队数据。
+	 * 覆盖「页面停留期间 token 过期」「从其他页返回时已过期」「资料页改过昵称/头像」等场景。
+	 */
+	onShow() {
 		if (this.checkTokenExpired()) return
 		this.loadLocalUser()
 		this.loadUserData()
-	},
-
-	/** 从其他页面返回时同步本地缓存（个人资料页可能修改了昵称 / 头像） */
-	onShow() {
-		this.loadLocalUser()
 	},
 
 	methods: {
@@ -173,18 +180,16 @@ export default {
 			if (!isTokenExpired(token)) return false
 			this.clearLoginCache()
 			this.loadLocalUser()
-			uni.showModal({
-				title: '请重新登录',
-				content: '登录已过期，请重新登录后再操作',
-				confirmText: '去登录',
-				showCancel: false,
-				success: (res) => {
-					if (res.confirm) {
-						uni.navigateTo({
-							url: '/src/login/login',
-						})
-					}
-				},
+			// 统一复用 LoginGuard 弹窗，保持登录提示样式一致
+			this.$nextTick(() => {
+				if (!this.$refs.loginGuard) return
+				this.$refs.loginGuard.open({
+					title: '请重新登录',
+					content: '登录已过期，请重新登录后再操作',
+					confirmText: '去登录',
+					showCancel: false,
+					loginMode: 'navigateTo',
+				})
 			})
 			return true
 		},
@@ -199,23 +204,37 @@ export default {
 			} catch (_) {}
 		},
 		loadLocalUser() {
+			let token = ''
 			let userId = ''
 			let username = ''
 			let userInfo = null
 			let squads = []
 			try {
+				token = uni.getStorageSync('token') || ''
 				userId = uni.getStorageSync('userId')
 				username = uni.getStorageSync('username')
 				userInfo = uni.getStorageSync('userInfo')
 				squads = uni.getStorageSync('squads') || []
 			} catch (_) {}
-			this.squads = squads
-			if (!userId && !userInfo) {
+
+			// 登录态以 token 为准：token 缺失或已过期（未登录 / 已退出 / 过期未清理）时一律按未登录处理，
+			// 避免残留的 userId、userInfo 缓存造成误判
+			if (!token || isTokenExpired(token) || (!userId && !userInfo)) {
 				this.isLoggedIn = false
+				this.userId = ''
+				this.user_no = ''
+				this.squads = []
+				this.squadItems = []
+				this.avatarUrl = MOCK_USER_DEFAULT_AVATAR
+				this.header = { ...MOCK_USER_HEADER }
 				return
 			}
+
+			this.squads = squads
 			this.userId = userId !== undefined && userId !== '' ? userId : this.userId
-			this.user_no = userInfo.user_no !== undefined && userInfo !== '' ? userInfo.user_no  : this.user_no
+			if (userInfo && userInfo.user_no !== undefined) {
+				this.user_no = userInfo.user_no
+			}
 			this.isLoggedIn = true
 			// 登录后：数据宫格「小队」数量 = 缓存 squads 条数
 			const squadCount = Array.isArray(squads) ? squads.length : 0
@@ -236,25 +255,8 @@ export default {
 		},
 		/** 异步加载用户资料与小队列表数据 */
 		async loadUserData() {
-			if (!this.isLoggedIn) {
-				try {
-					const profile = await fetchUserProfile()
-					if (profile) {
-						this.avatarUrl = profile.avatarUrl || this.avatarUrl
-						this.displayNameGuest = profile.displayNameGuest || this.displayNameGuest
-						this.displayNameLoggedIn = profile.displayNameLoggedIn || this.displayNameLoggedIn
-						this.isLoggedIn = profile.isLoggedIn || false
-						if (profile.header) {
-							this.header = { ...this.header, ...profile.header }
-						}
-						if (Array.isArray(profile.dataItems) && profile.dataItems.length) {
-							this.dataItems = profile.dataItems
-						}
-					}
-				} catch (_) {}
-			}
-
-			// 未登录用户：小队区域不展示任何数据，避免出现灰色占位块
+			// 未登录用户：使用 data 中的访客默认资料，小队区域不展示任何数据。
+			// 注意不能请求 GET /api/v1/user/profile：该接口需要鉴权，访客调用会返回 401。
 			if (!this.isLoggedIn) {
 				this.squadItems = []
 				return
@@ -266,7 +268,13 @@ export default {
 				this.squadItems = (Array.isArray(squadItems) ? squadItems : []).filter(
 					(item) => item && item.id !== ''
 				)
-			} catch (_) {}
+			} catch (err) {
+				// 登录态失效（token 过期 / 401）：接口层已清缓存并提示，这里同步切回访客态
+				if (isAuthError(err)) {
+					this.loadLocalUser()
+					this.squadItems = []
+				}
+			}
 		},
 
 		/** 切换小队置顶状态：置顶时取消其他置顶并移到首位 */
@@ -305,9 +313,14 @@ export default {
 			})
 		},
 
-		/** 点击顶部设置按钮：登录后进入个人资料页 */
+		/** 点击顶部设置按钮：未登录 / token 过期时走登录拦截，登录后进入个人资料页 */
 		goProfilePage() {
-			if (!this.isLoggedIn) return
+			const guard = this.$refs.loginGuard
+			if (!guard || !guard.ensureLogin({ content: '登录后即可查看和编辑个人资料' })) {
+				// ensureLogin 可能已清理过期 token，同步一次页面登录态
+				this.loadLocalUser()
+				return
+			}
 			uni.navigateTo({
 				url: '/src/user-profile/user-profile',
 			})

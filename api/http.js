@@ -60,7 +60,21 @@ function promptReLogin() {
 function rejectExpiredToken(message) {
 	clearLoginCache()
 	promptReLogin()
-	return Promise.reject(new Error(message))
+	const error = new Error(message)
+	error.code = 'TOKEN_EXPIRED'
+	error.statusCode = 401
+	return Promise.reject(error)
+}
+
+/**
+ * 判断请求错误是否属于未登录 / 登录态失效（token 过期或后端返回 401）。
+ * 供调用方区分「登录态问题」与普通网络错误，避免静默回退掩盖登录过期。
+ * @param {Error & {code?: string, statusCode?: number}} err
+ * @returns {boolean}
+ */
+export function isAuthError(err) {
+	if (!err) return false
+	return err.code === 'TOKEN_EXPIRED' || err.statusCode === 401
 }
 
 function unwrapBusinessBody(body) {
@@ -163,7 +177,16 @@ export function request(options) {
 					const message =
 						(raw && typeof raw === 'object' && (raw.message || raw.msg)) ||
 						`HTTP ${statusCode}`
-					reject(new Error(message))
+					const error = new Error(message)
+					error.statusCode = statusCode
+					// 鉴权接口返回 401：说明登录态已失效（如 token 被后端判定过期），
+					// 清理本地缓存并提示重新登录，页面据此回退到访客状态
+					if (statusCode === 401 && !isNoAuth(url, method)) {
+						clearLoginCache()
+						promptReLogin()
+						error.code = 'TOKEN_EXPIRED'
+					}
+					reject(error)
 					return
 				}
 				try {

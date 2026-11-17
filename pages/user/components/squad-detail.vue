@@ -4,6 +4,16 @@
 			<view class="hero">
 				<image class="heroImg" :src="detail.cover" mode="aspectFill" />
 				<view class="heroMask" />
+				<!-- 编辑入口：仅队长可见，样式对齐「我的」页右上角设置按钮 -->
+				<view
+					v-if="isCaptain"
+					class="editBtn"
+					hover-class="editBtnHover"
+					hover-stay-time="120"
+					@tap="goEditSquad"
+				>
+					<uni-icons type="compose" size="20" color="#ffffff" />
+				</view>
 				<!-- <view class="heroChips">
 					<text v-if="detail.topTag" class="chip chip--soft">{{ detail.topTag }}</text>
 					<text class="chip chip--accent">{{ detail.badge }}</text>
@@ -82,14 +92,22 @@
 					<text class="hintBody">{{ detail.notice }}</text>
 				</view>
 
-				<!-- 小队管理入口：队长显示转让，成员显示退出，非成员显示加入 -->
-				<view
-					v-if="isCaptain"
-					class="primaryActionBtn"
-					hover-class="primaryActionBtnHover"
-					@tap="openTransferModal"
-				>
-					<text class="primaryActionBtnTxt">转让队长</text>
+				<!-- 小队管理入口：队长显示转让 + 退出，成员显示退出，非成员显示加入 -->
+				<view v-if="isCaptain" class="actionGroup">
+					<view
+						class="primaryActionBtn"
+						hover-class="primaryActionBtnHover"
+						@tap="openTransferModal"
+					>
+						<text class="primaryActionBtnTxt">转让队长</text>
+					</view>
+					<view
+						class="leaveBtn"
+						hover-class="leaveBtnHover"
+						@tap="onCaptainLeaveTap"
+					>
+						<text class="leaveBtnTxt">退出小队</text>
+					</view>
 				</view>
 				<view
 					v-else-if="isMember"
@@ -251,14 +269,18 @@ export default {
 			return this.detailLoaded && !!this.currentUserId && !this.isMember
 		},
 	},
-	/** 页面加载：解析路由参数 squadId，先用 Mock 兜底渲染，再请求后端详情覆盖 */
+	/** 页面加载：解析路由参数 squadId，先用 Mock 兜底渲染 */
 	onLoad(options) {
 		const raw = options && options.squadId ? String(options.squadId) : ''
 		const id = decodeURIComponent(raw) || MOCK_USER_SQUAD_DEFAULT_ID
 		this.currentUserId = uni.getStorageSync('userId') || ''
 		this.squadId = id
 		this.detail = getMockUserSquadDetail(id)
-		this.loadSquadDetail(id)
+	},
+	/** 每次进入/返回页面都重新拉取详情，编辑小队后立即可见 */
+	onShow() {
+		this.currentUserId = uni.getStorageSync('userId') || this.currentUserId
+		this.loadSquadDetail(this.squadId)
 	},
 	methods: {
 		/**
@@ -290,6 +312,17 @@ export default {
 			uni.navigateTo({
 				url: `/src/activity-detail/activity-detail?activity_id=${activity.id}`,
 			})
+		},
+		/** 跳转编辑小队：复用创建小队页面的编辑模式，数据由后端详情回填 */
+		goEditSquad() {
+			if (!this.squadId) return
+			uni.navigateTo({
+				url: `/src/create-unit/create-unit?squadId=${encodeURIComponent(this.squadId)}`,
+			})
+		},
+		/** 队长点退出：必须先转让队长，后端同样会拦截 */
+		onCaptainLeaveTap() {
+			uni.showToast({ title: '请先转让队长后再退出', icon: 'none' })
 		},
 		/** 打开转让队长弹窗 */
 		openTransferModal() {
@@ -442,6 +475,28 @@ export default {
 	bottom: 0;
 	height: 220rpx;
 	background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(27, 23, 50, 0.72) 100%);
+}
+
+/* 右上角编辑按钮：与「我的」页设置按钮同款圆形半透明样式 */
+.editBtn {
+	position: absolute;
+	top: 24rpx;
+	right: 24rpx;
+	z-index: 2;
+	width: 64rpx;
+	height: 64rpx;
+	border-radius: 50%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: rgba(255, 255, 255, 0.22);
+	border: 1rpx solid rgba(255, 255, 255, 0.42);
+	box-shadow: 0 6rpx 16rpx rgba(0, 0, 0, 0.18);
+	box-sizing: border-box;
+}
+
+.editBtnHover {
+	background: rgba(255, 255, 255, 0.36);
 }
 
 /* .heroChips {
@@ -798,6 +853,19 @@ export default {
 	font-size: 30rpx;
 	font-weight: 600;
 	color: #ffffff;
+}
+
+/* 队长操作区：转让队长与退出小队同一行 */
+.actionGroup {
+	margin-top: 22rpx;
+	display: flex;
+	gap: 20rpx;
+}
+
+.actionGroup .primaryActionBtn,
+.actionGroup .leaveBtn {
+	flex: 1;
+	margin-top: 0;
 }
 
 /* 退出小队入口 */

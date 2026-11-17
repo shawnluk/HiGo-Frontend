@@ -4,8 +4,8 @@
 
 const COS_TEST = 'https://unitone-1310134019.cos.ap-guangzhou.myqcloud.com/TopBar'
 
-/** 用户页默认头像（未裁剪前） */
-export const MOCK_USER_DEFAULT_AVATAR = `${COS_TEST}/logo.png`
+/** 用户页默认头像（访客 / 未设置头像）：使用本地资源，不依赖 COS 公共读权限 */
+export const MOCK_USER_DEFAULT_AVATAR = '/static/logo.png'
 
 /** 未登录 / 已登录展示昵称（开发占位） */
 export const MOCK_USER_DISPLAY_NAME_GUEST = 'HiGoer'

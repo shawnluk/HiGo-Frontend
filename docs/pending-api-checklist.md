@@ -1,6 +1,7 @@
 # HiGo 前端待接入接口清单
 
 > 统计时间：2026-11-12
+> 最近更新：2026-11-17（补充临时头像清理、所在城市、messages 表缺失）
 > 核对范围：前端 `pages/`、`src/`、`components/`、`api/modules/`、`config/env.js`；后端 `HiGo-Backend/src/routes/`
 > 当前环境：`useMock: false`，已接入接口均走真实后端
 
@@ -19,7 +20,7 @@
 | --- | ---: | ---: | ---: | ---: |
 | 首页 | 4 | 1 | 0 | 3 |
 | 动态页 | 3 | 0 | 1 | 2 |
-| 消息 / 聊天室 | 4 | 0 | 0 | 4 |
+| 消息 / 聊天室 | 5 | 0 | 0 | 5 |
 | 「我的」页 | 11 | 0 | 0 | 11 |
 | 登录 / 注册 | 5 | 0 | 0 | 5 |
 | 活动详情 | 2 | 0 | 1 | 1 |
@@ -28,7 +29,7 @@
 | 创建活动 | 1 | 0 | 0 | 1 |
 | 发布动态 | 1 | 0 | 0 | 1 |
 | 创建小队 | 1 | 0 | 0 | 1 |
-| **合计** | **39** | **1** | **2** | **36** |
+| **合计** | **40** | **1** | **2** | **37** |
 
 ## 1 项可直接联调（后端已就绪）
 
@@ -42,7 +43,8 @@
 - 首页活动：列表、详情、创建、热度上报、分类筛选（服务端 `category_id`）
 - 分类：`GET /api/v1/categories`
 - 动态：列表、发布、点赞、取消点赞、评论、删除评论
-- 小队：详情 `GET /api/v1/squads/:id`（已对非成员开放）、我的小队 `GET /api/v1/squads/mine`、创建 `POST /api/v1/squads`、加入 `POST /api/v1/squads/:id/join`、退出 `POST /api/v1/squads/:id/leave`、转让队长 `POST /api/v1/squads/:id/captain`
+- 小队：详情 `GET /api/v1/squads/:id`（已对非成员开放）、我的小队 `GET /api/v1/squads/mine`、创建 `POST /api/v1/squads`（必传 `avatar_temp_key`，后端事务内转存头像）、加入 `POST /api/v1/squads/:id/join`、退出 `POST /api/v1/squads/:id/leave`、转让队长 `POST /api/v1/squads/:id/captain`、编辑小队 `POST /api/v1/squads/:id/update`（仅队长，可选 `avatar_temp_key`）
+- 头像上传：`POST /api/v1/upload/credentials`（`biz=user` → `user-avatar/<userId>/`；`biz=temp` → `tmp-avatar/<userId>/`），前端经 COS 直传后提交返回的 `key`，创建小队时后端复制到 `unit-avatar/<squadId>/`
 - 创建活动：所在小队选择 `GET /api/v1/squads/mine`（含按用户记住上次选择、无小队时跳转创建小队、创建成功后返回自动回填新小队）
 
 ---
@@ -66,6 +68,7 @@
 - [ ] **通知详情**：仅 Toast「通知详情开发中」 → 【后端待建】 — `pages/message/message.vue:166-171`
 - [ ] **聊天记录**：直接返回 Mock，无聊天记录接口 → 【后端待建】 — `api/modules/message.js:19-24`
 - [ ] **发送消息**：仅本地追加到列表，无发送接口 → 【后端待建】 — `pages/chat/chat-room.vue:79-93`
+- [ ] **通知列表接口不可用**：数据库缺 `messages` 表，`GET /api/v1/messages` 一旦被调用会 500 → 【后端待建】 — `HiGo-Backend/src/routes/messages.js:12-15`
 
 ## 「我的」页
 
@@ -128,4 +131,11 @@
 
 ## 创建小队
 
-- [ ] **小队头像上传**：本地选择，文案标注「（待接入）」 → 【后端待建】 — `src/create-unit/create-unit.vue:336-352`
+- [ ] **所在城市**：仅前端 Picker 选择并展示，后端 `squad` 表无城市字段，提交时未入库；创建与编辑小队共用该页面 → 【后端待建】 — `src/create-unit/create-unit.vue`
+
+---
+
+## 资源问题（不计入上方接口统计）
+
+- [ ] **分类图标 403**：`GET /api/v1/categories` 返回的 `icon` 指向私有读 COS（`unitone-1310134019.cos.ap-guangzhou.myqcloud.com/HomeCategoryBar-icon/*.png`），直接访问均返回 403；前端已在创建小队页改用本地 SVG 兜底，如需继续使用后端图标，需将对象设为公共读或重新上传 → 【后端 / 运维待处理】
+- [ ] **临时头像残留**：创建/编辑小队前上传到 `tmp-avatar/<userId>/` 的对象，若用户放弃提交不会自动删除；需为桶配置 COS 生命周期规则（如 1 天后清理该前缀）→ 【后端 / 运维待处理】

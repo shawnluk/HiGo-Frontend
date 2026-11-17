@@ -35,27 +35,38 @@ const COS = resolveCosSdk()
 /**
  * COS 直传封装（STS 临时密钥方案）。
  * 主密钥不出后端：先调 POST /api/v1/upload/credentials 换取受限临时密钥，
- * 再直传到 `user-avatar/<userId>/` 前缀下，最后返回完整 URL。
+ * 再直传到对应前缀（用户头像 `user-avatar/<userId>/`、
+ * 创建小队用的临时头像 `tmp-avatar/<userId>/`），返回完整 URL 与对象键。
  * H5 用浏览器版 SDK，小程序用微信版 SDK。
  */
 
-let cosInstance = null
-let cachedCredentials = null
+const cosInstances = Object.create(null)
+const credentialsCache = Object.create(null)
+
+/** 各业务类型应下发的目录前缀，用于识别后端未更新或旧凭证缓存 */
+const EXPECTED_PREFIX = {
+	user: 'user-avatar/',
+	temp: 'tmp-avatar/',
+}
 
 /**
- * 换取上传凭证（带缓存，凭证有效期内复用）。
+ * 换取上传凭证（按业务类型分别缓存，凭证有效期内复用）。
+ * @param {'user'|'temp'} [biz] 业务类型：user=用户头像，temp=创建小队前的临时头像
+ * @param {{force?: boolean}} [options] force=true 时跳过缓存强制重新获取
  * @returns {Promise<{tmpSecretId:string, tmpSecretKey:string, token:string, expiredTime:number, bucket:string, region:string, prefix:string}>}
  */
-async function fetchCredentials() {
+async function fetchCredentials(biz = 'user', options = {}) {
 	const now = Math.floor(Date.now() / 1000)
-	if (cachedCredentials && cachedCredentials.expiredTime && cachedCredentials.expiredTime - 60 > now) {
-		return cachedCredentials
+	const cached = credentialsCache[biz]
+	if (!options.force && cached && cached.expiredTime && cached.expiredTime - 60 > now) {
+		return cached
 	}
 	const data = await request({
 		url: ApiPaths.uploadCredentials,
 		method: 'POST',
+		data: { biz },
 	})
-	cachedCredentials = {
+	credentialsCache[biz] = {
 		tmpSecretId: data.tmpSecretId,
 		tmpSecretKey: data.tmpSecretKey,
 		token: data.token,
@@ -64,19 +75,20 @@ async function fetchCredentials() {
 		region: data.region,
 		prefix: data.prefix,
 	}
-	return cachedCredentials
+	return credentialsCache[biz]
 }
 
 /**
- * 获取（复用的）COS 实例；getAuthorization 里动态拉取临时密钥。
+ * 获取（复用的）COS 实例；getAuthorization 里按业务类型动态拉取临时密钥。
+ * @param {'user'|'temp'} [biz] 业务类型
  */
-function getCos() {
-	if (cosInstance) return cosInstance
+function getCos(biz = 'user') {
+	if (cosInstances[biz]) return cosInstances[biz]
 	if (!COS) throw new Error('COS SDK 加载失败')
-	cosInstance = new COS({
+	cosInstances[biz] = new COS({
 		getAuthorization: async (_options, callback) => {
 			try {
-				const c = await fetchCredentials()
+				const c = await fetchCredentials(biz)
 				callback({
 					TmpSecretId: c.tmpSecretId,
 					TmpSecretKey: c.tmpSecretKey,
@@ -89,7 +101,7 @@ function getCos() {
 			}
 		},
 	})
-	return cosInstance
+	return cosInstances[biz]
 }
 
 /** 从文件路径提取扩展名，取不到时回退 png */
@@ -125,15 +137,25 @@ function fileToBlob(filePath) {
 // #endif
 
 /**
- * 上传头像（裁剪后的本地文件）到 COS，返回可访问的完整 URL。
- * 存储路径以前端换回的 `prefix`（后端按 token 中的 userId 下发）为准，
+ * 上传图片（裁剪后的本地文件）到 COS。
+ * 存储路径以接口换回的 `prefix`（后端按 token 中的 userId 下发）为准，
  * 避免前端 userId 与后端 token 解析出的 userId 不一致导致路径错位。
  * @param {string} filePath 本地临时文件路径（小程序文件路径 / H5 base64）
- * @returns {Promise<string>} 头像完整 URL
+ * @param {'user'|'temp'} biz 业务类型：user=用户头像，temp=创建小队前的临时头像
+ * @returns {Promise<{url: string, key: string}>} 图片完整 URL 与 COS 对象键
  */
-export async function uploadAvatar(filePath) {
+async function uploadToCos(filePath, biz) {
 	if (!filePath) throw new Error('缺少待上传的文件路径')
-	const c = await fetchCredentials()
+	let c = await fetchCredentials(biz)
+
+	// 后端未更新或旧凭证缓存可能下发错误目录，先强制刷新一次再校验
+	const expectedPrefix = EXPECTED_PREFIX[biz]
+	if (expectedPrefix && !String(c.prefix || '').startsWith(expectedPrefix)) {
+		c = await fetchCredentials(biz, { force: true })
+	}
+	if (expectedPrefix && !String(c.prefix || '').startsWith(expectedPrefix)) {
+		throw new Error('上传目录配置异常，请刷新页面后重试')
+	}
 
 	// H5 先转 Blob，用于决定扩展名与 Content-Type
 	let body = null
@@ -161,7 +183,7 @@ export async function uploadAvatar(filePath) {
 
 	// 浏览器版与微信版 SDK 都提供 putObject（微信版支持 FilePath）
 	await new Promise((resolve, reject) => {
-		getCos().putObject(params, (err, data) => {
+		getCos(biz).putObject(params, (err, data) => {
 			if (err) {
 				reject(err)
 				return
@@ -170,5 +192,29 @@ export async function uploadAvatar(filePath) {
 		})
 	})
 
-	return `https://${c.bucket}.cos.${c.region}.myqcloud.com/${key}`
+	return {
+		url: `https://${c.bucket}.cos.${c.region}.myqcloud.com/${key}`,
+		key,
+	}
+}
+
+/**
+ * 上传用户头像（`user-avatar/<userId>/` 前缀）。
+ * @param {string} filePath 本地临时文件路径（小程序文件路径 / H5 base64）
+ * @returns {Promise<string>} 头像完整 URL
+ */
+export async function uploadAvatar(filePath) {
+	const result = await uploadToCos(filePath, 'user')
+	return result.url
+}
+
+/**
+ * 上传创建小队用的临时头像（`tmp-avatar/<userId>/` 前缀）。
+ * 创建小队时把返回的 `key` 作为 `avatar_temp_key` 提交，
+ * 由后端复制到 `unit-avatar/<squadId>/`，避免产生无头像小队。
+ * @param {string} filePath 本地临时文件路径（小程序文件路径 / H5 base64）
+ * @returns {Promise<{url: string, key: string}>} 临时头像 URL 与对象键
+ */
+export function uploadTempAvatar(filePath) {
+	return uploadToCos(filePath, 'temp')
 }

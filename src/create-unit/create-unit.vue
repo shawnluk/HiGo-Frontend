@@ -5,7 +5,7 @@
 			<view class="backBtn" @click="onBack">
 				<uni-icons type="left" size="22" color="#1f1f1f"></uni-icons>
 			</view>
-			<text class="navTitle">创建小队，与搭子一起玩</text>
+			<text class="navTitle">{{ isEdit ? '编辑小队' : '创建小队，与搭子一起玩' }}</text>
 		</view>
 
 		<scroll-view scroll-y class="formScroll" :show-scrollbar="false">
@@ -13,15 +13,15 @@
 			<view class="card avatarCard">
 				<view
 					class="avatarBox"
-					:class="{ hasAvatar: !!avatarTempPath }"
+					:class="{ hasAvatar: !!avatarPreview }"
 					hover-class="avatarBox--hover"
 					hover-stay-time="120"
 					@tap="selectAvatar"
 				>
 					<image
-						v-if="avatarTempPath"
+						v-if="avatarPreview"
 						class="avatarImg"
-						:src="avatarTempPath"
+						:src="avatarPreview"
 						mode="aspectFill"
 					/>
 					<uni-icons v-else type="staff-filled" size="56" color="#ffffff"></uni-icons>
@@ -29,7 +29,7 @@
 						<uni-icons type="camera-filled" size="14" color="#ffffff"></uni-icons>
 					</view>
 				</view>
-				<text class="avatarLabel">{{ avatarTempPath ? '点击更换头像（待接入）' : '上传小队头像（待接入）' }}</text>
+				<text class="avatarLabel">{{ avatarPreview ? '点击更换头像' : '上传小队头像' }}</text>
 			</view>
 
 			<!-- 小队名称 -->
@@ -91,13 +91,6 @@
 						</view>
 						<text class="catName">{{ item.name }}</text>
 					</view>
-
-					<view class="catItem" @tap="onMoreCategory">
-						<view class="catIconBox">
-							<text class="catMorePlus">＋</text>
-						</view>
-						<text class="catName catMoreName">更多</text>
-					</view>
 				</view>
 			</view>
 
@@ -117,11 +110,11 @@
 
 				<view class="rowDivider"></view>
 
-				<view class="rowLine">
+				<view class="rowLine rowLineDisabled">
 					<text class="rowLabel">入队审核</text>
 					<text class="rowHint">需主理人审核</text>
 					<view class="switchWrap">
-						<switch :checked="needReview" color="#ff3b30" @change="onReviewChange" />
+						<switch :checked="needReview" color="#ff3b30" :disabled="true" />
 					</view>
 				</view>
 			</view>
@@ -131,20 +124,38 @@
 
 		<view class="footer safeFooter">
 			<view class="primary" hover-class="primary--hover" @tap="onSubmit">
-				<text class="primaryTxt">{{ submitting ? '创建中...' : '创建小队' }}</text>
+				<text class="primaryTxt">{{ submitting ? (isEdit ? '保存中...' : '创建中...') : (isEdit ? '保存修改' : '创建小队') }}</text>
 			</view>
 		</view>
 
 		<!-- 登录拦截组件：提交前统一校验登录态 -->
-		<LoginGuard ref="loginGuard" content="登录后即可创建小队" />
+		<LoginGuard ref="loginGuard" :content="isEdit ? '登录后即可编辑小队' : '登录后即可创建小队'" />
+
+		<!-- 小队头像裁剪：确认后仅本地预览，提交时统一上传 COS -->
+		<QfImageCropper
+			v-if="showCropper"
+			ref="cropper"
+			:src="cropperImg"
+			:width="300"
+			:height="300"
+			:z-index="9999"
+			fileType="png"
+			@crop="onCropperCrop"
+		>
+			<view class="cropCancel" @click="cancelCrop">取消</view>
+		</QfImageCropper>
 	</view>
 </template>
 
 <script>
 import { fetchCategories } from '@/api/modules/category.js'
-import { createSquad } from '@/api/modules/user.js'
+import { createSquad, fetchSquadDetail, updateSquad } from '@/api/modules/user.js'
 import LoginGuard from '@/components/login-guard.vue'
+import QfImageCropper from '@/uni_modules/qf-image-cropper/components/qf-image-cropper/qf-image-cropper.vue'
+import { pickSingleImage } from '@/utils/image-picker.js'
+import { uploadTempAvatar } from '@/utils/cos-upload.js'
 import { PENDING_SQUAD_SELECTION_KEY } from '@/constants/create-activity.js'
+import { CATEGORY_VISUALS, CATEGORY_KEY_BY_ID } from '@/constants/category-visuals.js'
 import { MOCK_INDEX_INITIAL_CITY, MOCK_INDEX_INITIAL_REGION } from '@/mock/index-page.js'
 import {
 	clampSquadName,
@@ -163,18 +174,31 @@ function normalizeCategory(item) {
 	const category_id = item.category_id != null ? item.category_id : item.id
 	const name = item.category_name || item.text || item.name || ''
 	if (category_id == null || !name) return null
+	// 图标优先使用本地 SVG（后端 icon 指向私有读 COS，直连会 403，仅作兜底）
+	const categoryKey = item.category_key || CATEGORY_KEY_BY_ID[category_id] || ''
+	const visual = CATEGORY_VISUALS[categoryKey]
+	const fallbackIcon = item.icon || item.icon_url || ''
 	return {
 		category_id,
 		name,
-		icon: item.icon || item.icon_url || '',
+		icon: visual ? visual.icon : fallbackIcon,
 	}
 }
 
 export default {
-	components: { LoginGuard },
+	components: { LoginGuard, QfImageCropper },
 	data() {
 		return {
 			avatarTempPath: '',
+			/** 编辑模式：已有头像地址（未重新裁剪时直接沿用） */
+			avatarUrl: '',
+			/** 编辑模式：被编辑的小队 ID */
+			isEdit: false,
+			squadId: '',
+			/** 头像裁剪状态 */
+			showCropper: false,
+			cropperImg: '',
+			cropCanceled: false,
 			submitting: false,
 			unitName: '',
 			unitIntro: '',
@@ -199,6 +223,10 @@ export default {
 		}
 	},
 	computed: {
+		/** 头像预览：优先使用新裁剪的本地图，其次沿用后端返回的已有头像 */
+		avatarPreview() {
+			return this.avatarTempPath || this.avatarUrl
+		},
 		/** 展示「城市 · 区县」 */
 		displayCity() {
 			const district = Array.isArray(this.region) ? this.region[2] : ''
@@ -208,9 +236,21 @@ export default {
 	async created() {
 		await this.loadCategories()
 	},
-	/** 记录来源页面，便于创建成功后回到创建活动页并自动选中新小队 */
+	/** 记录来源页面，并兜底校验登录态（防止通过 URL / 分享直接进入） */
 	onLoad(options) {
 		this.fromScene = (options && options.from) || ''
+		// 带 squadId 进入即为编辑模式，表单数据全部以后端详情为准
+		const squadId = options && options.squadId ? String(options.squadId) : ''
+		if (squadId) {
+			this.isEdit = true
+			this.squadId = squadId
+			this.loadSquadForEdit(squadId)
+		}
+		this.$nextTick(() => {
+			if (this.$refs.loginGuard) {
+				this.$refs.loginGuard.ensureLogin({ loginMode: 'redirectTo' })
+			}
+		})
 	},
 	methods: {
 		/** 返回上一页，无页面栈时回到首页 */
@@ -220,6 +260,29 @@ export default {
 				uni.navigateBack()
 			} else {
 				uni.reLaunch({ url: '/pages/user/user' })
+			}
+		},
+		/**
+		 * 编辑模式：拉取小队详情并回填表单。
+		 * 名称、简介、分类、入队审核状态均以 GET /api/v1/squads/:id 返回的数据为准。
+		 * @param {string|number} id 小队 ID
+		 */
+		async loadSquadForEdit(id) {
+			try {
+				const data = await fetchSquadDetail(id)
+				if (!data) return
+				this.unitName = data.squad_name || data.name || ''
+				this.unitIntro = data.intro || ''
+				this.squadCategoryId = data.category_id ? Number(data.category_id) : null
+				this.needReview = Number(data.join_type) === 1
+				this.avatarUrl = data.squad_avatar || data.avatar || ''
+				this.syncNameWidthUsed()
+				this.nameInputKey += 1
+			} catch (e) {
+				uni.showToast({
+					title: (e && e.message) || '小队信息加载失败',
+					icon: 'none',
+				})
 			}
 		},
 		/** 拉取小队分类选项 */
@@ -246,10 +309,6 @@ export default {
 			this.squadCategoryId = item.category_id
 			this.squadCategoryName = item.name
 		},
-		/** 更多分类占位 */
-		onMoreCategory() {
-			uni.showToast({ title: '更多分类开发中', icon: 'none' })
-		},
 		/** 地区选择：更新城市与地区 */
 		onRegionChange(e) {
 			const value = (e && e.detail && e.detail.value) || []
@@ -262,10 +321,6 @@ export default {
 			// #ifdef H5
 			uni.showToast({ title: 'H5 端暂不支持城市选择', icon: 'none' })
 			// #endif
-		},
-		/** 切换入队审核 */
-		onReviewChange(e) {
-			this.needReview = Boolean(e && e.detail && e.detail.value)
 		},
 		/**
 		 * uni-app：小程序常见 e.detail.value；H5 常见 e.target.value；
@@ -341,28 +396,46 @@ export default {
 			this._lastSquadWidthToastAt = now
 			uni.showToast({ title: '已达最大宽度，已截断', icon: 'none' })
 		},
-		selectAvatar() {
-			uni.chooseImage({
-				count: 1,
-				sizeType: ['compressed', 'original'],
-				sourceType: ['album', 'camera'],
-				success: (res) => {
-					const path = res.tempFilePaths && res.tempFilePaths[0]
-					if (path) this.avatarTempPath = path
-				},
-				fail: (err) => {
-					const msg = (err && err.errMsg) || ''
-					if (msg.includes('cancel') || msg.includes('取消')) return
-					uni.showToast({ title: '选择图片失败', icon: 'none' })
-				},
-			})
+		/** 选择头像：统一选图后进入 1:1 裁剪，裁剪结果仅作本地预览 */
+		async selectAvatar() {
+			const path = await pickSingleImage()
+			if (!path) return
+			this.cropCanceled = false
+			this.cropperImg = path
+			this.showCropper = true
 		},
-		/** 提交创建小队：校验后调用 POST /api/v1/squads */
+		/** 取消裁剪并复位状态 */
+		cancelCrop() {
+			this.cropCanceled = true
+			if (this.$refs.cropper && this.$refs.cropper.resetData) {
+				this.$refs.cropper.resetData()
+			}
+			this.showCropper = false
+			this.cropperImg = ''
+		},
+		/** 裁剪完成：更新本地预览，提交时再上传 COS */
+		onCropperCrop(e) {
+			if (this.cropCanceled) return
+			const tempFilePath = e && e.tempFilePath
+			this.showCropper = false
+			this.cropperImg = ''
+			this.cropCanceled = false
+			if (tempFilePath) {
+				this.avatarTempPath = tempFilePath
+				uni.showToast({ title: '头像已更新，提交后生效', icon: 'none' })
+			}
+		},
+		/** 提交表单：创建模式 POST /api/v1/squads，编辑模式 POST /api/v1/squads/:id/update */
 		async onSubmit() {
 			if (this.submitting) return
-			if (!this.$refs.loginGuard.ensureLogin({ content: '登录后即可创建小队' })) return
-			if (!this.avatarTempPath) {
-				uni.showToast({ title: '请先上传小队头像', icon: 'none' })
+			if (
+				!this.$refs.loginGuard.ensureLogin({
+					content: this.isEdit ? '登录后即可编辑小队' : '登录后即可创建小队',
+				})
+			) return
+			// 创建必须新选头像；编辑时已有头像可直接沿用
+			if (!this.avatarPreview) {
+				uni.showToast({ title: '请先选择并裁剪头像', icon: 'none' })
 				return
 			}
 			const name = (this.unitName || '').trim()
@@ -381,11 +454,54 @@ export default {
 			}
 
 			this.submitting = true
+			uni.showLoading({ title: this.isEdit ? '保存中...' : '提交中...', mask: true })
+
+			// 1. 仅在重新选择头像时上传到临时目录；编辑未换头像则跳过
+			let avatarTempKey = ''
+			if (this.avatarTempPath) {
+				try {
+					const uploaded = await uploadTempAvatar(this.avatarTempPath)
+					avatarTempKey = uploaded.key
+				} catch (e) {
+					uni.hideLoading()
+					this.submitting = false
+					uni.showToast({
+						title: (e && e.message) || '头像上传失败，请重试',
+						icon: 'none',
+					})
+					return
+				}
+			}
+
+			// 2. 编辑：更新基础信息，后端在事务内转存新头像并按需清理旧头像
+			if (this.isEdit) {
+				try {
+					const payload = {
+						name,
+						intro,
+						category_id: this.squadCategoryId || 0,
+					}
+					if (avatarTempKey) payload.avatar_temp_key = avatarTempKey
+					await updateSquad(this.squadId, payload)
+					uni.hideLoading()
+					uni.showToast({ title: '已保存', icon: 'success' })
+					setTimeout(() => this.onBack(), 600)
+				} catch (e) {
+					uni.hideLoading()
+					this.submitting = false
+					uni.showToast({
+						title: (e && e.message) || '保存失败',
+						icon: 'none',
+					})
+				}
+				return
+			}
+
+			// 3. 创建小队：后端在事务内插入记录并转存头像，任一步失败都会整体回滚
 			try {
 				const created = await createSquad({
 					name,
-					// 头像上传接口待接入，暂按项目约定提交本地临时路径
-					avatar: this.avatarTempPath,
+					avatar_temp_key: avatarTempKey,
 					intro,
 					category_id: this.squadCategoryId || 0,
 					// 0=自由加入，1=需队长审核
@@ -403,9 +519,11 @@ export default {
 						} catch (_) {}
 					}
 				}
+				uni.hideLoading()
 				uni.showToast({ title: '创建成功', icon: 'success' })
 				setTimeout(() => this.onBack(), 600)
 			} catch (e) {
+				uni.hideLoading()
 				this.submitting = false
 				uni.showToast({
 					title: (e && e.message) || '创建失败',
@@ -564,6 +682,11 @@ export default {
 	font-weight: 600;
 	color: #1f1f1f;
 	flex-shrink: 0;
+}
+
+/* 入队审核暂不可编辑：整行置灰 */
+.rowLineDisabled {
+	opacity: 0.45;
 }
 
 .rowInput {
@@ -735,13 +858,6 @@ export default {
 	color: #999999;
 }
 
-.catMorePlus {
-	font-size: 40rpx;
-	line-height: 1;
-	color: #b3b3b3;
-	font-weight: 300;
-}
-
 .catName {
 	font-size: 24rpx;
 	color: #333333;
@@ -752,8 +868,17 @@ export default {
 	font-weight: 600;
 }
 
-.catMoreName {
-	color: #b3b3b3;
+/* 裁剪浮层取消按钮 */
+.cropCancel {
+	position: fixed;
+	top: 30rpx;
+	right: 30rpx;
+	z-index: 1001;
+	background-color: rgba(0, 0, 0, 0.5);
+	color: #ffffff;
+	padding: 14rpx 20rpx;
+	border-radius: 999rpx;
+	font-size: 28rpx;
 }
 
 .scrollBottomPad {
